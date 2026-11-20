@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TajamarApp.Core.DTOs.Common;
 using TajamarApp.Core.DTOs.Trayectos;
 using TajamarApp.Core.Interfaces;
 
@@ -15,6 +16,17 @@ public class TrayectosController : ControllerBase
     public TrayectosController(ITrayectoService trayectoService)
     {
         _trayectoService = trayectoService;
+    }
+
+    /// <summary>
+    /// Motor de búsqueda y filtrado de trayectos activos con paginación y filtros dinámicos.
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(ResultadoPaginadoDto<TrayectoResumenDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> BuscarTrayectos([FromQuery] FiltroTrayectosDto filtro)
+    {
+        var resultado = await _trayectoService.BuscarTrayectosAsync(filtro);
+        return Ok(resultado);
     }
 
     /// <summary>

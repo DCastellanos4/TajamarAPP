@@ -6,3 +6,4 @@ En esta carpeta se registra la documentación técnica de los módulos y tareas 
 - [BE-D01: Setup de Arquitectura .NET 10 y Base de Datos](BE-D01_SETUP_ARQUITECTURA.md)
 - [BE-D02: Módulo de Autenticación JWT y Perfil Extendido (PerfilApp)](BE-D02_AUTH_PERFIL.md)
 - [BE-D03: Módulo CRUD de Trayectos (Recurrentes y Eventos)](BE-D03_CRUD_TRAYECTOS.md)
+- [BE-D04: Motor de Búsqueda y Filtrado Paginado de Trayectos](BE-D04_BUSCADOR_TRAYECTOS.md)
