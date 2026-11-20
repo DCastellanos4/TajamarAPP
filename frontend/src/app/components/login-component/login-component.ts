@@ -25,6 +25,7 @@ export class LoginComponent {
     let contraseña = this.cajaContraseña.nativeElement.value;
     let login = new Usuario(usuario, contraseña);
     let response = await this._service.logIn(login);
+    this.mensaje = response
     this._router.navigate(['/'])
     this._cdr.detectChanges();
   }

@@ -17,7 +17,7 @@ export class ServiceLogin {
     ){}
 
     async logIn(usu: Usuario): Promise<any> {
-        let request = "api/manage/login"
+        let request = "api/Auth/Login"
         let json = JSON.stringify(usu)
         let header = new HttpHeaders()
             .set("content-type", "application/json")
