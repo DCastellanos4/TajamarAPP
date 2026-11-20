@@ -1,11 +1,12 @@
-# 🛠️ BE-D01: Setup de Arquitectura .NET 10 y Base de Datos
+# 🛠️ BE-D01: Setup de Arquitectura .NET 10 y Base de Datos (Actualizado)
 
 ## 📌 Resumen de la Tarea
 - **Responsable:** David (Back)
-- **Estado:** ✅ Completada
+- **Estado:** ✅ Completada y actualizada con datos oficiales de Paco
 - **Framework:** .NET 10 (SDK 10.0.301)
 - **ORM:** Entity Framework Core 10.0.0
 - **Base de Datos:** Azure SQL Database (`sqldavidc3597.database.windows.net / AZURETAJAMAR`)
+- **Arquitectura:** 100% Autónoma y autosuficiente (sin dependencias de la API externa de Paco).
 
 ---
 
@@ -15,11 +16,12 @@
 backend/
 ├── TajamarApp.slnx                     # Solución .NET 10
 └── src/
-    ├── TajamarApp.Core/                # Dominio y Entidades (sin dependencias externas)
+    ├── TajamarApp.Core/                # Dominio y Entidades
     │   └── Entities/
-    │       ├── UsuarioTajamar.cs       # Tabla USUARIOSTAJAMAR (Paco)
-    │       ├── CursoTajamar.cs         # Tabla CURSOSTAJAMAR (Paco)
-    │       ├── CursoUsuarioTajamar.cs  # Tabla CURSOSUSUARIOSTAJAMAR (Paco)
+    │       ├── RolTajamar.cs           # Tabla ROLESCHARLASTAJAMAR (Oficial Paco)
+    │       ├── UsuarioTajamar.cs       # Tabla USUARIOSTAJAMAR (Oficial Paco)
+    │       ├── CursoTajamar.cs         # Tabla CURSOSTAJAMAR (Oficial Paco)
+    │       ├── CursoUsuarioTajamar.cs  # Tabla CURSOSUSUARIOSTAJAMAR (Oficial Paco)
     │       ├── PerfilApp.cs            # Tabla PERFIL_APP (Extensión conductor/vehículo)
     │       ├── EventoApp.cs            # Tabla EVENTOS_APP (Charlas y eventos Tajamar)
     │       ├── EventoAsistente.cs      # Tabla EVENTO_ASISTENTES (Inscripción alumnos)
@@ -28,48 +30,43 @@ backend/
     │       └── ColaEspera.cs           # Tabla COLA_ESPERA (Lista de espera FIFO)
     │
     ├── TajamarApp.Infrastructure/      # Acceso a datos y EF Core
-    │   ├── Data/
-    │   │   └── TajamarAppContext.cs    # Configuración Fluent API y DbSets
-    │   └── Migrations/                 # Historial de migraciones
-    │       └── 20261120093240_InitialCreate.cs # Migración única inicial
+    │   └── Data/
+    │       └── TajamarAppContext.cs    # Mapeo Fluent API, índices y relaciones
     │
     └── TajamarApp.API/                 # ASP.NET Core Web API
-        ├── Controllers/                # Controladores REST
-        ├── appsettings.json            # Cadena de conexión Azure SQL Server
-        └── Program.cs                  # Inyección de dependencias, CORS y Swagger
+        ├── Controllers/
+        │   ├── CursosController.cs     # Endpoints de cursos oficiales
+        │   ├── UsuariosController.cs   # Listado y detalle de alumnos/profesores
+        │   └── HealthController.cs     # Chequeo de conexión y estado Azure SQL
+        ├── appsettings.json            # Conexión Azure SQL
+        └── Program.cs                  # Pipeline HTTP, CORS y Swagger
 ```
 
 ---
 
-## 🗄️ Modelo de Base de Datos y Migración Única
+## 🗄️ Datos Oficiales Cargados en Azure SQL (`AZURETAJAMAR`)
 
-Cumpliendo el requisito de **minimizar al máximo el número de migraciones**, se ha diseñado el modelo completo del sistema en la primera migración `InitialCreate`, creando las siguientes tablas en Azure SQL:
-
-| Tabla | Propósito | Clave Primaria | Relaciones Clave |
-|:---|:---|:---|:---|
-| `USUARIOSTAJAMAR` | Usuarios y auth base (Paco) | `IDUSUARIO` (Identity) | 1:1 con `PERFIL_APP` |
-| `CURSOSTAJAMAR` | Cursos lectivos de Tajamar | `IDCURSO` (Identity) | M:N con `USUARIOSTAJAMAR` |
-| `CURSOSUSUARIOSTAJAMAR` | Tabla pivote alumnos-cursos | `IDCURSOSUSUARIOS` | FK a Curso y Usuario |
-| `PERFIL_APP` | Extensión perfil de movilidad | `Id` (Identity) | FK única a `USUARIOSTAJAMAR` |
-| `EVENTOS_APP` | Eventos y actividades Tajamar | `Id` (Identity) | FK a Creador (`USUARIOSTAJAMAR`) |
-| `EVENTO_ASISTENTES` | Alumnos apuntados a eventos | `Id` (Identity) | FK a Evento y Usuario |
-| `TRAYECTOS` | Viajes compartidos (rutina/eventos) | `Id` (Identity) | FK a Conductor (`PERFIL_APP`) y Evento (nullable) |
-| `RESERVAS_TRAYECTO` | Plazas confirmadas | `Id` (Identity) | FK a Trayecto y Pasajero |
-| `COLA_ESPERA` | Lista de espera FIFO | `Id` (Identity) | FK a Trayecto y Usuario |
+La base de datos cuenta con el seed oficial provisto por Paco:
+1. **Roles:** `1: PROFESOR`, `2: ALUMNO`, `3: ADMINISTRADOR`.
+2. **Cursos:** ID `3597` (*Master Desarrollo 2026-2027*).
+3. **Usuarios Oficiales (29 alumnos/profesores):**
+   * David Castellanos (ID 212)
+   * Mario Mingorance (ID 199)
+   * Mónica Carmena (ID 220)
+   * Harry Floresca (ID 206)
+   * *Y los 25 compañeros restantes con sus avatares oficiales y emails @tajamar365.com.*
+   * Clave por defecto para todos: `12345` (`OFi9W3uf5kGsaxyTqF1ZFQ==`).
+4. **Matrículas:** Los 29 alumnos vinculados al curso 3597.
 
 ---
 
-## 🚀 Cómo Ejecutar el Backend en Local
+## 🌐 Endpoints Disponibles en Swagger (`/swagger`)
 
-1. Situarse en la carpeta de la API:
-   ```bash
-   cd backend/src/TajamarApp.API
-   ```
-2. Ejecutar el proyecto:
-   ```bash
-   dotnet run
-   ```
-3. Abrir Swagger en el navegador:
-   ```
-   https://localhost:7xxx/swagger
-   ```
+| Controlador | Método | Ruta | Descripción |
+|:---|:---:|:---|:---|
+| **Cursos** | `GET` | `/api/cursos` | Lista el curso oficial (Master Desarrollo 2026-2027) |
+| **Cursos** | `GET` | `/api/cursos/{id}` | Detalle del curso por ID |
+| **Usuarios** | `GET` | `/api/usuarios` | Lista los 29 alumnos/profesores de Tajamar con sus roles |
+| **Usuarios** | `GET` | `/api/usuarios/{id}` | Detalle de un usuario específico y su `PerfilApp` |
+| **Usuarios** | `GET` | `/api/usuarios/curso/{idCurso}` | Lista los alumnos matriculados en un curso |
+| **Health** | `GET` | `/api/health` | Estado de conexión y conteo de tablas en Azure SQL |

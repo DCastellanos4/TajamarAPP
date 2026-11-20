@@ -12,6 +12,7 @@ public class UsuarioTajamar
     public int IdRole { get; set; }
 
     // Relaciones
+    public RolTajamar? Rol { get; set; }
     public ICollection<CursoUsuarioTajamar> Cursos { get; set; } = new List<CursoUsuarioTajamar>();
     public PerfilApp? PerfilApp { get; set; }
     public ICollection<ReservaTrayecto> Reservas { get; set; } = new List<ReservaTrayecto>();

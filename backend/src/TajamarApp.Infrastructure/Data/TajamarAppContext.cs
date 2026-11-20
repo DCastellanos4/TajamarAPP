@@ -9,9 +9,13 @@ public class TajamarAppContext : DbContext
     {
     }
 
+    // --- TABLAS TAJAMAR (ESQUEMA PACO) ---
+    public DbSet<RolTajamar> RolesTajamar => Set<RolTajamar>();
     public DbSet<UsuarioTajamar> UsuariosTajamar => Set<UsuarioTajamar>();
     public DbSet<CursoTajamar> CursosTajamar => Set<CursoTajamar>();
     public DbSet<CursoUsuarioTajamar> CursosUsuariosTajamar => Set<CursoUsuarioTajamar>();
+
+    // --- TABLAS PROPIAS DE LA APP ---
     public DbSet<PerfilApp> PerfilesApp => Set<PerfilApp>();
     public DbSet<EventoApp> EventosApp => Set<EventoApp>();
     public DbSet<EventoAsistente> EventosAsistentes => Set<EventoAsistente>();
@@ -24,11 +28,21 @@ public class TajamarAppContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // --- TABLAS TAJAMAR (ESQUEMA PACO) ---
+        modelBuilder.Entity<RolTajamar>(entity =>
+        {
+            entity.ToTable("ROLESCHARLASTAJAMAR");
+            entity.HasKey(e => e.IdRole);
+            entity.Property(e => e.IdRole).HasColumnName("IDROLE").ValueGeneratedNever();
+            entity.Property(e => e.Role).HasColumnName("ROLE").HasMaxLength(50);
+        });
+
         modelBuilder.Entity<UsuarioTajamar>(entity =>
         {
             entity.ToTable("USUARIOSTAJAMAR");
             entity.HasKey(e => e.IdUsuario);
-            entity.Property(e => e.IdUsuario).HasColumnName("IDUSUARIO").ValueGeneratedOnAdd();
+            entity.HasIndex(e => e.Email).IsUnique().HasDatabaseName("u_mailuser");
+
+            entity.Property(e => e.IdUsuario).HasColumnName("IDUSUARIO");
             entity.Property(e => e.Nombre).HasColumnName("NOMBRE").HasMaxLength(70);
             entity.Property(e => e.Apellidos).HasColumnName("APELLIDOS").HasMaxLength(70);
             entity.Property(e => e.Email).HasColumnName("EMAIL").HasMaxLength(70);
@@ -36,13 +50,18 @@ public class TajamarAppContext : DbContext
             entity.Property(e => e.Imagen).HasColumnName("IMAGEN").HasMaxLength(600);
             entity.Property(e => e.Password).HasColumnName("PASSWORD").HasMaxLength(100);
             entity.Property(e => e.IdRole).HasColumnName("IDROLE");
+
+            entity.HasOne(d => d.Rol)
+                .WithMany(p => p.Usuarios)
+                .HasForeignKey(d => d.IdRole)
+                .HasConstraintName("FK_USUARIOSTAJAMAR_ROLESCHARLASTAJAMAR");
         });
 
         modelBuilder.Entity<CursoTajamar>(entity =>
         {
             entity.ToTable("CURSOSTAJAMAR");
             entity.HasKey(e => e.IdCurso);
-            entity.Property(e => e.IdCurso).HasColumnName("IDCURSO").ValueGeneratedOnAdd();
+            entity.Property(e => e.IdCurso).HasColumnName("IDCURSO");
             entity.Property(e => e.Nombre).HasColumnName("NOMBRE").HasMaxLength(150);
             entity.Property(e => e.FechaInicio).HasColumnName("FECHAINICIO");
             entity.Property(e => e.FechaFin).HasColumnName("FECHAFIN");
@@ -53,19 +72,23 @@ public class TajamarAppContext : DbContext
         {
             entity.ToTable("CURSOSUSUARIOSTAJAMAR");
             entity.HasKey(e => e.IdCursosUsuarios);
-            entity.Property(e => e.IdCursosUsuarios).HasColumnName("IDCURSOSUSUARIOS").ValueGeneratedOnAdd();
+            entity.HasIndex(e => new { e.IdCurso, e.IdUsuario }).IsUnique().HasDatabaseName("u_idcurso_idusuario");
+
+            entity.Property(e => e.IdCursosUsuarios).HasColumnName("IDCURSOSUSUARIOS");
             entity.Property(e => e.IdCurso).HasColumnName("IDCURSO");
             entity.Property(e => e.IdUsuario).HasColumnName("IDUSUARIO");
 
             entity.HasOne(d => d.Curso)
                 .WithMany(p => p.Usuarios)
                 .HasForeignKey(d => d.IdCurso)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_CURSOSUSUARIOSTAJAMAR_CURSOSTAJAMAR");
 
             entity.HasOne(d => d.Usuario)
                 .WithMany(p => p.Cursos)
                 .HasForeignKey(d => d.IdUsuario)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_CURSOSUSUARIOSTAJAMAR_USUARIOSTAJAMAR");
         });
 
         // --- TABLAS PROPIAS DE LA APP ---
