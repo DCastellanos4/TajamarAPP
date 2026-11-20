@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TajamarApp.API/TajamarApp.API.csproj" />
+    <Project Path="src/TajamarApp.Core/TajamarApp.Core.csproj" />
+    <Project Path="src/TajamarApp.Infrastructure/TajamarApp.Infrastructure.csproj" />
+  </Folder>
+</Solution>
