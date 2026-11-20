@@ -4,4 +4,7 @@
     <Project Path="src/TajamarApp.Core/TajamarApp.Core.csproj" />
     <Project Path="src/TajamarApp.Infrastructure/TajamarApp.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TajamarApp.Tests/TajamarApp.Tests.csproj" />
+  </Folder>
 </Solution>

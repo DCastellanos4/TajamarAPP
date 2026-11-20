@@ -151,6 +151,7 @@ $$\text{Hash} = \text{Base64}(\text{SHA256}(\text{Encoding.Unicode.GetBytes}(\te
 ### 3.2. Formato del Token JWT
 Al iniciar sesión exitosamente en `POST /api/auth/login`, el servidor devuelve un token firmado con los siguientes Claims estándar:
 - `ClaimTypes.NameIdentifier`: `IdUsuario` (entero).
+- `idUsuarioTajamar`: `IdUsuario` (entero, compatibilidad cruzada de módulos).
 - `ClaimTypes.Email`: Correo institucional (`@tajamar365.com`).
 - `ClaimTypes.Name`: Nombre completo del usuario.
 - `ClaimTypes.Role`: Rol del usuario en Tajamar (`Alumno`, `Profesor`, etc.).
@@ -171,6 +172,8 @@ En `Program.cs`, los servicios están registrados con ciclo de vida **Scoped** (
 | `IJwtService` | `JwtService` | Scoped | Generación y firma de tokens JWT |
 | `IAuthService` | `AuthService` | Scoped | Validación de credenciales y perfiles |
 | `ITrayectoService` | `TrayectoService` | Scoped | Lógica CRUD, filtrado dinámico y validaciones de viajes |
+| `Database` | `Database` | Singleton | Helper de concurrencia y transacciones ADO.NET para reservas |
+| `TimeProvider` | `TimeProvider.System` | Singleton | Abstracción de reloj para pruebas y cálculo de fechas |
 
 ---
 
@@ -181,3 +184,5 @@ En `Program.cs`, los servicios están registrados con ciclo de vida **Scoped** (
 3. **Control de Edición de Plazas:** Al modificar un trayecto, el nuevo cupo de `PlazasTotales` no puede ser inferior a las plazas que ya han sido reservadas por otros alumnos.
 4. **Autoría y Propietario:** Únicamente el conductor que creó el trayecto puede editarlo (`PUT`) o cancelarlo (`DELETE`).
 5. **Búsqueda Eficiente:** El buscador aplica `AsNoTracking()` para minimizar la huella de memoria y realiza un `CountAsync()` antes de paginar con `.Skip()` y `.Take()`.
+6. **Bloqueo Concurrente Anti-Carreras:** En `POST /api/trayectos/{id}/reservar`, la fila se bloquea con `WITH (UPDLOCK, HOLDLOCK)`. Si se agota la última plaza, el estado cambia automáticamente a `Completo` y las solicitudes posteriores reciben `409 PLAZAS_AGOTADAS` invitando a la cola.
+7. **Motor de Cola FIFO y Auto-Promoción:** Cuando un pasajero cancela su reserva (`DELETE /api/reservas/{id}`), el sistema examina `COLA_ESPERA`. El primer alumno según FIFO se promociona inmediatamente a reserva `Confirmada` y se reasignan las posiciones de los demás.

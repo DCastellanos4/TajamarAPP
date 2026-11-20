@@ -19,10 +19,10 @@ public class JwtService : IJwtService
 
     public string GenerateToken(UsuarioTajamar usuario, string rolNombre)
     {
-        var secret = _configuration["JwtSettings:Secret"]
+        var secret = _configuration["JwtSettings:Secret"] ?? _configuration["Jwt:SigningKey"]
             ?? throw new InvalidOperationException("JwtSettings:Secret no configurado.");
-        var issuer = _configuration["JwtSettings:Issuer"] ?? "TajamarAppAPI";
-        var audience = _configuration["JwtSettings:Audience"] ?? "TajamarAppClients";
+        var issuer = _configuration["JwtSettings:Issuer"] ?? _configuration["Jwt:Issuer"] ?? "TajamarAppAPI";
+        var audience = _configuration["JwtSettings:Audience"] ?? _configuration["Jwt:Audience"] ?? "TajamarAppClients";
         var expirationHours = double.TryParse(_configuration["JwtSettings:ExpirationHours"], out var h) ? h : 24;
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
@@ -31,6 +31,7 @@ public class JwtService : IJwtService
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, usuario.IdUsuario.ToString()),
+            new("idUsuarioTajamar", usuario.IdUsuario.ToString()),
             new(ClaimTypes.Email, usuario.Email),
             new(ClaimTypes.Name, $"{usuario.Nombre} {usuario.Apellidos}".Trim()),
             new(ClaimTypes.Role, rolNombre)

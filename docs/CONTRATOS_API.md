@@ -13,6 +13,9 @@ Este documento sirve como referencia oficial para los desarrolladores Frontend (
 2. [Módulo de Perfil Extendido (`/api/perfil`)](#2-módulo-de-perfil-extendido-apiperfil)
 3. [Módulo de Trayectos (`/api/trayectos`)](#3-módulo-de-trayectos-apitrayectos)
 4. [Módulo Académico Tajamar (`/api/cursos`, `/api/usuarios`)](#4-módulo-académico-tajamar-apicursos-apiusuarios)
+5. [Módulo de Eventos y Asistencia (`/api/eventos`)](#5-módulo-de-eventos-y-asistencia-apieventos)
+6. [Módulo de Reservas y Cola FIFO (`/api/trayectos/{id}/reservar`, `/api/trayectos/{id}/cola`, `/api/reservas/{id}`)](#6-módulo-de-reservas-y-cola-fifo)
+7. [Health Check (`/api/health`)](#7-health-check-apihealth)
 
 ---
 
@@ -284,3 +287,145 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
 - **Ruta:** `/api/usuarios`
 - **Acceso:** Público / Autenticado
 - **Respuesta `200 OK`:** Listado de usuarios/alumnos/profesores de Tajamar con su rol y avatar.
+
+---
+
+## 5. Módulo de Eventos y Asistencia (`/api/eventos`)
+
+### 5.1. Listar Eventos Futuros
+- **Método:** `GET`
+- **Ruta:** `/api/eventos`
+- **Acceso:** Público
+- **Respuesta `200 OK`:**
+```json
+[
+  {
+    "id": 1,
+    "nombre": "Charla de tecnología",
+    "inicio": "2026-11-27T10:04:09.186Z",
+    "lugar": "Tajamar",
+    "activo": true,
+    "totalAsistentes": 5
+  }
+]
+```
+
+### 5.2. Detalle de Evento
+- **Método:** `GET`
+- **Ruta:** `/api/eventos/{id}`
+- **Acceso:** Público (si el usuario tiene rol `GestorEventos` o `Administrador`, incluye array de `asistentes`).
+- **Respuesta `200 OK`:**
+```json
+{
+  "id": 1,
+  "nombre": "Charla de tecnología",
+  "inicio": "2026-11-27T10:04:09.186Z",
+  "lugar": "Tajamar",
+  "activo": true,
+  "descripcion": "Presentación sobre desarrollo cloud.",
+  "organizador": {
+    "id": 212,
+    "nombre": "David Castellanos"
+  },
+  "totalAsistentes": 5
+}
+```
+
+### 5.3. Crear Evento
+- **Método:** `POST`
+- **Ruta:** `/api/eventos`
+- **Headers:** `Authorization: Bearer <token>` (requiere rol `GestorEventos` o `Administrador`)
+- **Request Body:**
+```json
+{
+  "nombre": "Torneo Tajamar",
+  "inicio": "2026-12-04T10:00:00Z",
+  "lugar": "Tajamar",
+  "imagen": "https://link-a-imagen.jpg",
+  "descripcion": "Torneo de pádel de Tajamar"
+}
+```
+- **Respuesta `201 Created`:** `{"id": 4}` con cabecera `Location`.
+
+### 5.4. Inscribirse a un Evento
+- **Método:** `POST`
+- **Ruta:** `/api/eventos/{id}/asistir`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuestas:**
+  - **`201 Created`**: Inscripción realizada.
+  - **`409 Conflict`**: `{"code": "ASISTENCIA_DUPLICADA"}` si ya estás inscrito, o `{"code": "EVENTO_CERRADO"}` si ya ha comenzado.
+
+### 5.5. Cancelar Asistencia a un Evento
+- **Método:** `DELETE`
+- **Ruta:** `/api/eventos/{id}/asistir`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuesta `204 NoContent`**.
+
+---
+
+## 6. Módulo de Reservas y Cola FIFO
+
+### 6.1. Reservar Plaza en un Trayecto
+- **Método:** `POST`
+- **Ruta:** `/api/trayectos/{id}/reservar`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuestas:**
+  - **`201 Created`**:
+    ```json
+    {
+      "id": 10,
+      "trayectoId": 2,
+      "estado": "Confirmada"
+    }
+    ```
+  - **`409 Conflict` (Sin plazas)**:
+    ```json
+    {
+      "title": "No quedan plazas. Usa la cola de espera.",
+      "status": 409,
+      "code": "PLAZAS_AGOTADAS",
+      "listaEsperaDisponible": true
+    }
+    ```
+  - **`409 Conflict` (Conductor propio / ya reservado)**: `TRAYECTO_PROPIO` o `RESERVA_DUPLICADA`.
+
+### 6.2. Apuntarse a la Cola de Espera (FIFO)
+- **Método:** `POST`
+- **Ruta:** `/api/trayectos/{id}/cola`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuestas:**
+  - **`201 Created`**:
+    ```json
+    {
+      "trayectoId": 2,
+      "posicion": 1,
+      "estado": "EnEspera"
+    }
+    ```
+  - **`409 Conflict`**: `PLAZAS_DISPONIBLES` (si aún quedan plazas libres) o `YA_EN_COLA`.
+
+### 6.3. Cancelar Reserva (con Auto-Promoción FIFO)
+- **Método:** `DELETE`
+- **Ruta:** `/api/reservas/{id}`
+- **Headers:** `Authorization: Bearer <token>`
+- **Comportamiento:** Si hay usuarios en cola de espera, el primero es automáticamente promocionado a reserva `Confirmada`. Si no hay nadie en espera, la plaza vuelve a estar disponible (`PlazasDisponibles + 1`).
+- **Respuesta `204 NoContent`**.
+
+---
+
+## 7. Health Check (`/api/health`)
+
+- **Método:** `GET`
+- **Ruta:** `/api/health`
+- **Acceso:** Público
+- **Respuesta `200 OK`:**
+```json
+{
+  "status": "Online",
+  "database": "Azure SQL (AZURETAJAMAR)",
+  "canConnect": true,
+  "totalCursosRegistrados": 3,
+  "totalUsuariosRegistrados": 33,
+  "timestamp": "2026-11-20T11:30:54.580Z"
+}
+```
