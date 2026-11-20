@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TajamarApp.Api/TajamarApp.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TajamarApp.Tests/TajamarApp.Tests.csproj" />
+  </Folder>
+</Solution>
