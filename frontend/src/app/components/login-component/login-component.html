@@ -1,0 +1,38 @@
+<div class="login-container">
+  <div class="login-card">
+    <header class="login-header">
+      <h1 class="page-title">Iniciar Sesión</h1>
+      <h2 class="login-message" style="color:blue">{{mensaje}}</h2>
+    </header>
+
+    <form class="login-form">
+      <div class="form-group">
+        <label class="form-label" for="cajaUsuario">Nombre usuario</label>
+        <input 
+          type="text" 
+          name="cajaUsuario" 
+          #cajaUsuario 
+          id="cajaUsuario"
+          class="form-input" 
+          placeholder="Ingresa tu usuario"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="cajaContraseña">Contraseña</label>
+        <input 
+          type="password" 
+          name="cajaContraseña" 
+          #cajaContraseña 
+          id="cajaContraseña"
+          class="form-input" 
+          placeholder="••••••••"
+        />
+      </div>
+
+      <button type="button" class="btn-login" (click)="logIn()">
+        Iniciar sesión
+      </button>
+    </form>
+  </div>
+</div>
