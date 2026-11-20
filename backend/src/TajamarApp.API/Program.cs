@@ -26,6 +26,7 @@ builder.Services.AddDbContext<TajamarAppContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPerfilService, PerfilService>();
+builder.Services.AddScoped<ITrayectoService, TrayectoService>();
 
 // 3. Autenticación JWT Bearer
 var jwtSecret = builder.Configuration["JwtSettings:Secret"]
