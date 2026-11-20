@@ -1,12 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>TajamarApp.Backend.Mario</UserSecretsId>
+    <!-- Desactivar warnings por vulnerabilidades conocidas transitorias en paquetes preview -->
+    <NoWarn>$(NoWarn);NU1902;NU1903</NoWarn>
   </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="11.0.1" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TajamarApp.Infrastructure\TajamarApp.Infrastructure.csproj" />
+    <ProjectReference Include="..\TajamarApp.Core\TajamarApp.Core.csproj" />
+  </ItemGroup>
+
 </Project>

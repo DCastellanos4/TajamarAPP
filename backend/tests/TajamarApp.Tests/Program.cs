@@ -29,7 +29,7 @@ await using var app = TajamarApplication.Build([], builder =>
     builder.Logging.ClearProviders();
     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     {
-        ["ConnectionStrings:Tajamar"] = connectionString,
+        ["ConnectionStrings:AzureSqlServer"] = Environment.GetEnvironmentVariable("TAJAMAR_TEST_API_SQL") ?? connectionString,
         ["Jwt:SigningKey"] = signingKey,
         ["Jwt:Issuer"] = "tajamar-tests",
         ["Jwt:Audience"] = "tajamar-tests"
@@ -39,21 +39,30 @@ app.Urls.Add("http://127.0.0.1:0");
 await app.StartAsync();
 using var anonymous = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
 
-using var driver = Client(900001, "GestorEventos");
-using var first = Client(900002);
-using var second = Client(900003);
-using var third = Client(900004);
-
 await using var sql = new SqlConnection(connectionString);
 await sql.OpenAsync();
+var driverId = await DemoUser("ana");
+var firstId = await DemoUser("bruno");
+var secondId = await DemoUser("carla");
+var thirdId = await DemoUser("daniel");
+using var driver = Client(driverId, "GestorEventos");
+using var first = Client(firstId);
+using var second = Client(secondId);
+using var third = Client(thirdId);
+
 int? tripId = null;
 int? eventId = null;
 try
 {
     using var setup = new SqlCommand("""
-        INSERT movilidad.Trayecto (ConductorId, Salida, Capacidad, PlazasDisponibles)
-        OUTPUT INSERTED.Id VALUES (900001, DATEADD(day, 1, SYSDATETIMEOFFSET()), 1, 1);
+        INSERT dbo.TRAYECTOS (ConductorPerfilId, Origen, Destino, FechaHoraSalida,
+            PlazasTotales, PlazasDisponibles, TipoTrayecto, Modalidad, Estado, FechaCreacion)
+        OUTPUT INSERTED.Id
+        SELECT Id, N'[TEST BE-M05]', N'Tajamar', DATEADD(day, 1, SYSUTCDATETIME()),
+            1, 1, N'Puntual', N'SoloIda', N'Activo', SYSUTCDATETIME()
+        FROM dbo.PERFIL_APP WHERE IdUsuarioTajamar = @driver;
         """, sql);
+    setup.Parameters.AddWithValue("@driver", driverId);
     tripId = (int)(await setup.ExecuteScalarAsync())!;
     var tripPath = $"/api/trayectos/{tripId}";
 
@@ -64,7 +73,7 @@ try
     await otherConnection.OpenAsync();
     await using var gate = (SqlTransaction)await otherConnection.BeginTransactionAsync();
     using var blockTrip = new SqlCommand("""
-        SELECT Id FROM movilidad.Trayecto WITH (UPDLOCK, HOLDLOCK) WHERE Id = @id;
+        SELECT Id FROM dbo.TRAYECTOS WITH (UPDLOCK, HOLDLOCK) WHERE Id = @id;
         """, otherConnection, gate);
     blockTrip.Parameters.AddWithValue("@id", tripId.Value);
     await blockTrip.ExecuteScalarAsync();
@@ -80,8 +89,8 @@ try
     var winningIndex = Array.FindIndex(race, r => r.StatusCode == HttpStatusCode.Created);
     var winner = winningIndex == 0 ? first : second;
     var loser = winningIndex == 0 ? second : first;
-    var loserId = winningIndex == 0 ? 900003 : 900002;
-    var winnerReservation = (await Body(race[winningIndex])).GetProperty("id").GetInt64();
+    var loserId = winningIndex == 0 ? secondId : firstId;
+    var winnerReservation = (await Body(race[winningIndex])).GetProperty("id").GetInt32();
     Check((await Body(race[1 - winningIndex])).GetProperty("code").GetString() == "PLAZAS_AGOTADAS",
         "Se indica la cola al perder la última plaza.");
     Check(await Available() == 0 && (await Confirmed()).Count == 1, "SQL guarda una reserva y cero plazas.");
@@ -98,17 +107,18 @@ try
     var promoted = (await Confirmed()).Single();
     Check(promoted.UserId == loserId && await Available() == 0, "El primer pasajero recibe la plaza sin liberar inventario.");
     using var checkQueue = new SqlCommand("""
-        SELECT COUNT(*) FROM movilidad.ColaEspera WHERE TrayectoId = @id AND
-        ((UsuarioId = @first AND Estado = N'Promocionado') OR
-         (UsuarioId = 900004 AND Estado = N'EnEspera' AND Posicion = 1));
+        SELECT COUNT(*) FROM dbo.COLA_ESPERA WHERE TrayectoId = @id AND
+        ((UsuarioTajamarId = @first AND Estado = N'Promocionado') OR
+         (UsuarioTajamarId = @third AND Estado = N'EnEspera' AND Posicion = 1));
         """, sql);
     checkQueue.Parameters.AddWithValue("@id", tripId.Value);
     checkQueue.Parameters.AddWithValue("@first", loserId);
+    checkQueue.Parameters.AddWithValue("@third", thirdId);
     Check((int)(await checkQueue.ExecuteScalarAsync())! == 2, "Se actualizan el estado y la posición de la cola.");
 
     await Expect(loser.DeleteAsync($"/api/reservas/{promoted.Id}"), HttpStatusCode.NoContent);
     var finalReservation = (await Confirmed()).Single();
-    Check(finalReservation.UserId == 900004, "El segundo pasajero se promociona en orden.");
+    Check(finalReservation.UserId == thirdId, "El segundo pasajero se promociona en orden.");
     await Expect(third.DeleteAsync($"/api/reservas/{finalReservation.Id}"), HttpStatusCode.NoContent);
     Check(await Available() == 1 && (await Confirmed()).Count == 0, "Con la cola vacía se restituye la plaza.");
 
@@ -130,7 +140,7 @@ try
           attend.Count(r => r.StatusCode == HttpStatusCode.Conflict) == 1, "La asistencia concurrente es única.");
     var detail = await Expect(anonymous.GetAsync(eventPath), HttpStatusCode.OK);
     Check(detail.GetProperty("totalAsistentes").GetInt32() == 1 &&
-          detail.GetProperty("organizador").GetProperty("id").GetInt32() == 900001 &&
+          detail.GetProperty("organizador").GetProperty("id").GetInt32() == driverId &&
           !detail.TryGetProperty("asistentes", out _), "El detalle público incluye organizador y contador.");
     var managedDetail = await Expect(driver.GetAsync(eventPath), HttpStatusCode.OK);
     Check(managedDetail.GetProperty("asistentes").GetArrayLength() == 1, "El gestor autorizado ve los asistentes.");
@@ -144,11 +154,11 @@ finally
     if (tripId.HasValue || eventId.HasValue)
     {
         using var cleanup = new SqlCommand("""
-            DELETE movilidad.ColaEspera WHERE TrayectoId = @trip;
-            DELETE movilidad.Reserva WHERE TrayectoId = @trip;
-            DELETE movilidad.Trayecto WHERE Id = @trip;
-            DELETE movilidad.Asistencia WHERE EventoId = @event;
-            DELETE movilidad.Evento WHERE Id = @event;
+            DELETE dbo.COLA_ESPERA WHERE TrayectoId = @trip;
+            DELETE dbo.RESERVAS_TRAYECTO WHERE TrayectoId = @trip;
+            DELETE dbo.TRAYECTOS WHERE Id = @trip;
+            DELETE dbo.EVENTO_ASISTENTES WHERE EventoId = @event;
+            DELETE dbo.EVENTOS_APP WHERE Id = @event;
             """, sql);
         cleanup.Parameters.AddWithValue("@trip", (object?)tripId ?? DBNull.Value);
         cleanup.Parameters.AddWithValue("@event", (object?)eventId ?? DBNull.Value);
@@ -156,23 +166,34 @@ finally
     }
 }
 
+async Task<int> DemoUser(string name)
+{
+    using var command = new SqlCommand("""
+        SELECT IDUSUARIO FROM dbo.USUARIOSTAJAMAR WHERE EMAIL = @email AND APELLIDOS = N'Demo BE-M05';
+        """, sql);
+    command.Parameters.AddWithValue("@email", $"bem05.{name}@example.invalid");
+    return await command.ExecuteScalarAsync() is int id
+        ? id
+        : throw new InvalidOperationException("Ejecuta el seeder BE-M05 antes de las pruebas SQL.");
+}
+
 async Task<int> Available()
 {
-    using var command = new SqlCommand("SELECT PlazasDisponibles FROM movilidad.Trayecto WHERE Id = @trip;", sql);
+    using var command = new SqlCommand("SELECT PlazasDisponibles FROM dbo.TRAYECTOS WHERE Id = @trip;", sql);
     command.Parameters.AddWithValue("@trip", tripId!.Value);
     return (int)(await command.ExecuteScalarAsync())!;
 }
 
-async Task<List<(long Id, int UserId)>> Confirmed()
+async Task<List<(int Id, int UserId)>> Confirmed()
 {
     using var command = new SqlCommand("""
-        SELECT Id, UsuarioId FROM movilidad.Reserva WHERE TrayectoId = @trip AND Estado = N'Confirmada';
+        SELECT Id, PasajeroUsuarioId FROM dbo.RESERVAS_TRAYECTO WHERE TrayectoId = @trip AND Estado = N'Confirmada';
         """, sql);
     command.Parameters.AddWithValue("@trip", tripId!.Value);
     await using var rows = await command.ExecuteReaderAsync();
-    var result = new List<(long, int)>();
+    var result = new List<(int, int)>();
     while (await rows.ReadAsync())
-        result.Add((rows.GetInt64(0), rows.GetInt32(1)));
+        result.Add((rows.GetInt32(0), rows.GetInt32(1)));
     return result;
 }
 

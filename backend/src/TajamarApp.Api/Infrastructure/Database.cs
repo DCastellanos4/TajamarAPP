@@ -2,10 +2,12 @@ using Microsoft.Data.SqlClient;
 
 sealed class Database(IConfiguration configuration)
 {
+    internal const string ConnectionName = "AzureSqlServer";
+
     public async Task<T> Read<T>(Func<SqlConnection, Task<T>> work, CancellationToken ct)
     {
-        var connectionString = configuration.GetConnectionString("Tajamar")
-            ?? throw new InvalidOperationException("Configura ConnectionStrings:Tajamar.");
+        var connectionString = configuration.GetConnectionString(ConnectionName)
+            ?? throw new InvalidOperationException($"Configura ConnectionStrings:{ConnectionName}.");
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync(ct);
         return await work(connection);
@@ -27,8 +29,8 @@ sealed class Database(IConfiguration configuration)
         foreach (var (key, value) in parameters)
         {
             var parameter = command.Parameters.AddWithValue(key, value ?? DBNull.Value);
-            if (value is DateTimeOffset)
-                parameter.SqlDbType = System.Data.SqlDbType.DateTimeOffset;
+            if (value is DateTime)
+                parameter.SqlDbType = System.Data.SqlDbType.DateTime2;
         }
         return command;
     }
