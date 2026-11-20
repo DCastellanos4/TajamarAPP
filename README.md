@@ -15,12 +15,15 @@ Proyecto de aplicación de coche compartido (estilo BlaBlaCar) para la comunidad
 ## 📁 Estructura del Repositorio
 ```
 tajamarAPP/
-├── backend/               # Proyecto .NET 8/9 Web API + SQL Server
+├── backend/               # Proyecto .NET 10 Web API + Azure SQL Server
 ├── frontend/              # Proyecto Angular 18+ (Standalone Components)
 └── docs/                  # Documentación técnica obligatoria (.md)
-    ├── KANBAN_TASKS.md    # Backlog detallado con criterios de aceptación
-    └── import-issues.ps1  # Script para importar todas las tareas de golpe a GitHub Projects
-```
+    ├── ARQUITECTURA_BACKEND.md # Arquitectura, capas, seguridad y modelo BBDD
+    ├── CONTRATOS_API.md        # Especificación de endpoints y payloads JSON
+    ├── swagger.json            # Contrato OpenAPI exportado para Frontend
+    ├── KANBAN_TASKS.md         # Backlog detallado con criterios de aceptación
+    ├── import-issues.ps1       # Script para importar todas las tareas a GitHub Issues
+    └── back/                   # Documentación paso a paso por tarea backend
 
 ---
 
