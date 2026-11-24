@@ -51,6 +51,8 @@ public static class TajamarApplication
         builder.Services.AddScoped<ITrayectoService, TrayectoService>();
         builder.Services.AddScoped<IReservaService, ReservaService>();
         builder.Services.AddScoped<INotificacionService, NotificacionService>();
+        builder.Services.AddScoped<IValoracionService, ValoracionService>();
+        builder.Services.AddScoped<ICalculadoraGastosService, CalculadoraGastosService>();
 
         // 3.1. SignalR y Mapeo de Usuario
         builder.Services.AddSignalR();

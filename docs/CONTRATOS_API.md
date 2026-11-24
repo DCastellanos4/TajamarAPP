@@ -4,7 +4,7 @@ Este documento sirve como referencia oficial para los desarrolladores Frontend (
 
 - **Base URL Local:** `http://localhost:5050`
 - **Swagger UI:** `http://localhost:5050/swagger`
-- **Contrato OpenAPI JSON:** [swagger.json](file:///C:/Users/Alumnos%20MCSD%20Mañana/Documents/tajamarAPP/docs/swagger.json)
+- **Contrato OpenAPI JSON:** [swagger.json](swagger.json)
 
 ---
 
@@ -16,7 +16,8 @@ Este documento sirve como referencia oficial para los desarrolladores Frontend (
 5. [Módulo de Eventos y Asistencia (`/api/eventos`)](#5-módulo-de-eventos-y-asistencia-apieventos)
 6. [Módulo de Reservas y Cola FIFO (`/api/trayectos/{id}/reservar`, `/api/trayectos/{id}/cola`, `/api/reservas/{id}`)](#6-módulo-de-reservas-y-cola-fifo)
 7. [Hub de Notificaciones en Tiempo Real SignalR (`/hubs/notificaciones`)](#7-hub-de-notificaciones-en-tiempo-real-signalr-hubsnotificaciones)
-8. [Health Check (`/api/health`)](#8-health-check-apihealth)
+8. [Módulo de Valoraciones y Reseñas (`/api/valoraciones`, `/api/conductores/{id}/resenas`)](#8-módulo-de-valoraciones-y-reseñas-apivaloraciones-apiconductoresidresenas)
+9. [Health Check (`/api/health`)](#9-health-check-apihealth)
 
 ---
 
@@ -146,21 +147,23 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
 {
   "elementos": [
     {
-      "id": 2,
+      "id": 4,
       "conductorNombre": "David Castellanos",
       "conductorImagen": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/212_user.jpg",
       "coche": "Seat Ibiza",
-      "origen": "Vallecas",
+      "origen": "Vallecas Central",
       "destino": "Tajamar",
-      "fechaHoraSalida": "2026-11-23T08:00:00",
-      "plazasDisponibles": 3,
+      "fechaHoraSalida": "2026-11-28T08:00:00",
+      "plazasDisponibles": 0,
       "plazasTotales": 3,
       "tipoTrayecto": "Recurrente",
       "modalidad": "IdaYVuelta",
       "turno": "Manana",
       "diasSemana": "L,M,X,J,V",
-      "estado": "Activo",
-      "eventoId": null
+      "estado": "Completo",
+      "eventoId": null,
+      "conductorPuntuacionMedia": 4.5,
+      "conductorTotalResenas": 2
     }
   ],
   "totalRegistros": 1,
@@ -211,20 +214,22 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
 - **Respuesta `200 OK`:**
 ```json
 {
-  "id": 2,
-  "origen": "Vallecas",
+  "id": 4,
+  "origen": "Vallecas Central",
   "destino": "Tajamar",
-  "fechaHoraSalida": "2026-11-23T08:00:00",
+  "fechaHoraSalida": "2026-11-28T08:00:00",
   "plazasTotales": 3,
-  "plazasDisponibles": 3,
+  "plazasDisponibles": 0,
   "tipoTrayecto": "Recurrente",
   "modalidad": "IdaYVuelta",
   "diasSemana": "L,M,X,J,V",
   "turno": "Manana",
-  "estado": "Activo",
+  "estado": "Completo",
   "eventoId": null,
   "eventoTitulo": null,
-  "fechaCreacion": "2026-11-20T11:05:00",
+  "fechaCreacion": "2026-11-24T08:10:05.0073082",
+  "conductorPuntuacionMedia": 4.5,
+  "conductorTotalResenas": 2,
   "conductor": {
     "idPerfil": 1,
     "idUsuario": 212,
@@ -234,9 +239,21 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
     "telefono": "611223344",
     "marcaCoche": "Seat",
     "modeloCoche": "Ibiza",
-    "colorCoche": "Gris",
+    "colorCoche": "Negro",
     "matricula": "1234XYZ",
-    "bio": "Estudiante de desarrollo..."
+    "bio": "Estudiante",
+    "puntuacionMedia": 4.5,
+    "totalResenas": 2
+  },
+  "estimacionCoste": {
+    "distanciaKm": 4.0,
+    "costeTotalTrayecto": 0.40,
+    "plazasOcupadas": 3,
+    "costePorPlaza": 0.10,
+    "conceptoBizum": "TajamarApp Vallecas Central - 28/11",
+    "telefonoBizum": "611223344",
+    "ahorroEstimadoVsTaxi": 17.90,
+    "co2AhorradoKg": 1.44
   }
 }
 ```
@@ -311,6 +328,29 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
   - **`401 Unauthorized`**: Token ausente o inválido.
   - **`403 Forbidden`**: Si el usuario no es el conductor del trayecto o no tiene perfil de conductor.
   - **`404 NotFound`**: Si el trayecto no existe.
+
+### 3.8. Calculadora automática de coste de combustible y ahorro
+- **Método:** `GET`
+- **Ruta:** `/api/trayectos/calcular-coste`
+- **Acceso:** Público / Autenticado
+- **Query Parameters:**
+  - `origen`: string (ej. `Vallecas`)
+  - `destino`: string (ej. `Tajamar`)
+  - `plazas`: int (número de plazas ocupadas, default: `1`)
+- **Descripción:** Calcula en tiempo real el coste estimado de carburante por persona, concepto sugerido para Bizum, ahorro frente a tarifa oficial de taxi de Madrid y CO2 no emitido (kg).
+- **Respuesta `200 OK`:**
+```json
+{
+  "distanciaKm": 4.0,
+  "costeTotalTrayecto": 0.40,
+  "plazasOcupadas": 3,
+  "costePorPlaza": 0.10,
+  "conceptoBizum": "TajamarApp Vallecas - 24/11",
+  "telefonoBizum": null,
+  "ahorroEstimadoVsTaxi": 17.90,
+  "co2AhorradoKg": 1.44
+}
+```
 
 ---
 
@@ -628,7 +668,111 @@ interface NotificacionDto {
 
 ---
 
-## 8. Health Check (`/api/health`)
+## 8. Módulo de Valoraciones y Reseñas (`/api/valoraciones`, `/api/conductores/{id}/resenas`)
+
+### 8.1. Emitir valoración y reseña de un viaje
+Permite calificar de 1 a 5 estrellas a un conductor tras haber viajado como pasajero con reserva confirmada en dicho trayecto.
+
+- **Método:** `POST`
+- **Ruta:** `/api/valoraciones`
+- **Headers:** `Authorization: Bearer <token>`
+- **Request Body (`CrearValoracionDto`):**
+```json
+{
+  "trayectoId": 4,
+  "puntuacion": 5,
+  "comentario": "Excelente viaje con David, muy puntual y conducción impecable.",
+  "tags": "Puntual,ConducciónSegura,BuenaMúsica"
+}
+```
+- **Respuestas:**
+  - **`201 Created` (`ResenaDto`):**
+    ```json
+    {
+      "id": 5,
+      "trayectoId": 4,
+      "conductorPerfilId": 1,
+      "pasajeroUsuarioId": 195,
+      "pasajeroNombre": "Sara Ulgazi El Yaghmouri",
+      "pasajeroFoto": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/195_user.jpg",
+      "puntuacion": 5,
+      "comentario": "Excelente viaje con David, muy puntual y conducción impecable.",
+      "tags": "Puntual,ConducciónSegura,BuenaMúsica",
+      "fechaCreacion": "2026-11-24T10:28:14.7439135Z",
+      "origenTrayecto": "Vallecas Central",
+      "destinoTrayecto": "Tajamar"
+    }
+    ```
+  - **`400 Bad Request`**:
+    - Si la puntuación no está entre 1 y 5.
+    - Si el conductor intenta autovalorarse (`"No puedes valorar tu propio trayecto como conductor."`).
+    - Si el alumno no tiene plaza confirmada (`"Solo los pasajeros con reserva confirmada en este trayecto pueden emitir una valoración."`).
+    - Si ya emitió una valoración previa (`"Ya has emitido una valoración para este trayecto."`).
+  - **`401 Unauthorized`**: Token JWT ausente o inválido.
+  - **`404 Not Found`**: El trayecto no existe.
+
+### 8.2. Consultar resumen, estrellas y opiniones de un conductor
+Devuelve el promedio de estrellas redondeado a 1 decimal, total de reseñas, desglose por nivel de estrellas (1★ a 5★) y listado cronológico de reseñas recibidas.
+
+- **Método:** `GET`
+- **Ruta:** `/api/conductores/{id}/resenas`
+- **Acceso:** Público / Autenticado
+- **Parámetros de Ruta:**
+  - `id`: int (Identificador de usuario Tajamar o ID de perfil app del conductor)
+- **Respuestas:**
+  - **`200 OK` (`ResumenResenasConductorDto`):**
+    ```json
+    {
+      "conductorIdUsuario": 212,
+      "conductorPerfilId": 1,
+      "conductorNombre": "David Castellanos",
+      "conductorFoto": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/212_user.jpg",
+      "puntuacionMedia": 4.5,
+      "totalResenas": 2,
+      "desgloseEstrellas": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 1,
+        "5": 1
+      },
+      "resenas": [
+        {
+          "id": 6,
+          "trayectoId": 4,
+          "conductorPerfilId": 1,
+          "pasajeroUsuarioId": 194,
+          "pasajeroNombre": "Matheus Ferreira De Carvalho",
+          "pasajeroFoto": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/194_user.jpg",
+          "puntuacion": 4,
+          "comentario": "Muy buen trayecto, puntual y buen conductor.",
+          "tags": "Puntual,Recomendable",
+          "fechaCreacion": "2026-11-24T10:28:15.2979096Z",
+          "origenTrayecto": "Vallecas Central",
+          "destinoTrayecto": "Tajamar"
+        },
+        {
+          "id": 5,
+          "trayectoId": 4,
+          "conductorPerfilId": 1,
+          "pasajeroUsuarioId": 195,
+          "pasajeroNombre": "Sara Ulgazi El Yaghmouri",
+          "pasajeroFoto": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/195_user.jpg",
+          "puntuacion": 5,
+          "comentario": "Excelente viaje con David, muy puntual y conducción impecable.",
+          "tags": "Puntual,ConducciónSegura,BuenaMúsica",
+          "fechaCreacion": "2026-11-24T10:28:14.7439135Z",
+          "origenTrayecto": "Vallecas Central",
+          "destinoTrayecto": "Tajamar"
+        }
+      ]
+    }
+    ```
+  - **`404 Not Found`**: Si no existe perfil de conductor asociado a ese identificador.
+
+---
+
+## 9. Health Check (`/api/health`)
 
 - **Método:** `GET`
 - **Ruta:** `/api/health`

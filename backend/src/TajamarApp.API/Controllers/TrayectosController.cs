@@ -12,10 +12,26 @@ namespace TajamarApp.API.Controllers;
 public class TrayectosController : ControllerBase
 {
     private readonly ITrayectoService _trayectoService;
+    private readonly ICalculadoraGastosService _calculadoraGastosService;
 
-    public TrayectosController(ITrayectoService trayectoService)
+    public TrayectosController(ITrayectoService trayectoService, ICalculadoraGastosService calculadoraGastosService)
     {
         _trayectoService = trayectoService;
+        _calculadoraGastosService = calculadoraGastosService;
+    }
+
+    /// <summary>
+    /// Calcula automáticamente el coste estimado de combustible por plaza, ahorro frente a taxi y CO2 ahorrado.
+    /// </summary>
+    [HttpGet("calcular-coste")]
+    [ProducesResponseType(typeof(EstimacionCosteDto), StatusCodes.Status200OK)]
+    public IActionResult CalcularCoste(
+        [FromQuery] string? origen,
+        [FromQuery] string? destino,
+        [FromQuery] int plazas = 1)
+    {
+        var estimacion = _calculadoraGastosService.CalcularCoste(origen, destino, Math.Max(0, plazas));
+        return Ok(estimacion);
     }
 
     /// <summary>

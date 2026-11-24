@@ -13,4 +13,6 @@ public class ConductorResumenDto
     public string? ColorCoche { get; set; }
     public string? Matricula { get; set; }
     public string? Bio { get; set; }
+    public decimal? PuntuacionMedia { get; set; }
+    public int TotalResenas { get; set; }
 }

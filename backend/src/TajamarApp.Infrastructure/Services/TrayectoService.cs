@@ -11,11 +11,29 @@ public class TrayectoService : ITrayectoService
 {
     private readonly TajamarAppContext _context;
     private readonly INotificacionService? _notificacionService;
+    private readonly ICalculadoraGastosService? _calculadoraGastosService;
 
-    public TrayectoService(TajamarAppContext context, INotificacionService? notificacionService = null)
+    public TrayectoService(
+        TajamarAppContext context,
+        INotificacionService? notificacionService = null,
+        ICalculadoraGastosService? calculadoraGastosService = null)
     {
         _context = context;
         _notificacionService = notificacionService;
+        _calculadoraGastosService = calculadoraGastosService;
+    }
+
+    private async Task<(decimal? Media, int Total)> ObtenerRatingConductorAsync(int conductorPerfilId)
+    {
+        var valoraciones = await _context.ValoracionesApp
+            .AsNoTracking()
+            .Where(v => v.ConductorPerfilId == conductorPerfilId)
+            .Select(v => v.Puntuacion)
+            .ToListAsync();
+
+        var total = valoraciones.Count;
+        decimal? media = total > 0 ? Math.Round((decimal)valoraciones.Average(), 1) : null;
+        return (media, total);
     }
 
     public async Task<TrayectoDetalleDto> CrearTrayectoAsync(int idUsuario, CrearTrayectoDto dto)
@@ -65,6 +83,10 @@ public class TrayectoService : ITrayectoService
         await _context.Trayectos.AddAsync(trayecto);
         await _context.SaveChangesAsync();
 
+        var (ratingMedia, totalResenas) = await ObtenerRatingConductorAsync(perfil.Id);
+        var estimacion = _calculadoraGastosService?.CalcularCoste(
+            trayecto.Origen, trayecto.Destino, 0, trayecto.FechaHoraSalida, perfil.Telefono);
+
         return new TrayectoDetalleDto
         {
             Id = trayecto.Id,
@@ -81,6 +103,9 @@ public class TrayectoService : ITrayectoService
             EventoId = trayecto.EventoId,
             EventoTitulo = eventoTitulo,
             FechaCreacion = trayecto.FechaCreacion,
+            ConductorPuntuacionMedia = ratingMedia,
+            ConductorTotalResenas = totalResenas,
+            EstimacionCoste = estimacion,
             Conductor = new ConductorResumenDto
             {
                 IdPerfil = perfil.Id,
@@ -93,7 +118,9 @@ public class TrayectoService : ITrayectoService
                 ModeloCoche = perfil.ModeloCoche,
                 ColorCoche = perfil.ColorCoche,
                 Matricula = perfil.Matricula,
-                Bio = perfil.Bio
+                Bio = perfil.Bio,
+                PuntuacionMedia = ratingMedia,
+                TotalResenas = totalResenas
             }
         };
     }
@@ -112,6 +139,15 @@ public class TrayectoService : ITrayectoService
             return null;
         }
 
+        var (ratingMedia, totalResenas) = await ObtenerRatingConductorAsync(trayecto.ConductorPerfilId);
+        var plazasOcupadas = Math.Max(0, trayecto.PlazasTotales - trayecto.PlazasDisponibles);
+        var estimacion = _calculadoraGastosService?.CalcularCoste(
+            trayecto.Origen,
+            trayecto.Destino,
+            plazasOcupadas,
+            trayecto.FechaHoraSalida,
+            trayecto.Conductor.Telefono);
+
         return new TrayectoDetalleDto
         {
             Id = trayecto.Id,
@@ -128,6 +164,9 @@ public class TrayectoService : ITrayectoService
             EventoId = trayecto.EventoId,
             EventoTitulo = trayecto.Evento?.Titulo,
             FechaCreacion = trayecto.FechaCreacion,
+            ConductorPuntuacionMedia = ratingMedia,
+            ConductorTotalResenas = totalResenas,
+            EstimacionCoste = estimacion,
             Conductor = new ConductorResumenDto
             {
                 IdPerfil = trayecto.Conductor.Id,
@@ -140,7 +179,9 @@ public class TrayectoService : ITrayectoService
                 ModeloCoche = trayecto.Conductor.ModeloCoche,
                 ColorCoche = trayecto.Conductor.ColorCoche,
                 Matricula = trayecto.Conductor.Matricula,
-                Bio = trayecto.Conductor.Bio
+                Bio = trayecto.Conductor.Bio,
+                PuntuacionMedia = ratingMedia,
+                TotalResenas = totalResenas
             }
         };
     }
@@ -181,6 +222,26 @@ public class TrayectoService : ITrayectoService
                 EventoId = t.EventoId
             })
             .ToListAsync();
+
+        var stats = await _context.ValoracionesApp
+            .AsNoTracking()
+            .Where(v => v.ConductorPerfilId == perfil.Id)
+            .GroupBy(v => v.ConductorPerfilId)
+            .Select(g => new
+            {
+                Count = g.Count(),
+                Media = Math.Round((decimal)g.Average(v => v.Puntuacion), 1)
+            })
+            .FirstOrDefaultAsync();
+
+        if (stats != null)
+        {
+            foreach (var t in trayectos)
+            {
+                t.ConductorTotalResenas = stats.Count;
+                t.ConductorPuntuacionMedia = stats.Media;
+            }
+        }
 
         return trayectos;
     }
@@ -233,6 +294,15 @@ public class TrayectoService : ITrayectoService
 
         await _context.SaveChangesAsync();
 
+        var (ratingMedia, totalResenas) = await ObtenerRatingConductorAsync(perfil.Id);
+        var plazasOcupadas = Math.Max(0, trayecto.PlazasTotales - trayecto.PlazasDisponibles);
+        var estimacion = _calculadoraGastosService?.CalcularCoste(
+            trayecto.Origen,
+            trayecto.Destino,
+            plazasOcupadas,
+            trayecto.FechaHoraSalida,
+            perfil.Telefono);
+
         return new TrayectoDetalleDto
         {
             Id = trayecto.Id,
@@ -249,6 +319,9 @@ public class TrayectoService : ITrayectoService
             EventoId = trayecto.EventoId,
             EventoTitulo = trayecto.Evento?.Titulo,
             FechaCreacion = trayecto.FechaCreacion,
+            ConductorPuntuacionMedia = ratingMedia,
+            ConductorTotalResenas = totalResenas,
+            EstimacionCoste = estimacion,
             Conductor = new ConductorResumenDto
             {
                 IdPerfil = perfil.Id,
@@ -261,7 +334,9 @@ public class TrayectoService : ITrayectoService
                 ModeloCoche = perfil.ModeloCoche,
                 ColorCoche = perfil.ColorCoche,
                 Matricula = perfil.Matricula,
-                Bio = perfil.Bio
+                Bio = perfil.Bio,
+                PuntuacionMedia = ratingMedia,
+                TotalResenas = totalResenas
             }
         };
     }
@@ -397,6 +472,42 @@ public class TrayectoService : ITrayectoService
                 EventoId = t.EventoId
             })
             .ToListAsync();
+
+        if (items.Any())
+        {
+            var trayectoIds = items.Select(i => i.Id).ToList();
+            var conductorStats = await _context.Trayectos
+                .AsNoTracking()
+                .Where(t => trayectoIds.Contains(t.Id))
+                .Select(t => new { t.Id, t.ConductorPerfilId })
+                .ToListAsync();
+
+            var perfilIds = conductorStats.Select(s => s.ConductorPerfilId).Distinct().ToList();
+
+            var statsPorPerfil = await _context.ValoracionesApp
+                .AsNoTracking()
+                .Where(v => perfilIds.Contains(v.ConductorPerfilId))
+                .GroupBy(v => v.ConductorPerfilId)
+                .Select(g => new
+                {
+                    PerfilId = g.Key,
+                    Count = g.Count(),
+                    Media = Math.Round((decimal)g.Average(v => v.Puntuacion), 1)
+                })
+                .ToDictionaryAsync(g => g.PerfilId, g => (g.Count, (decimal?)g.Media));
+
+            var trayectoPerfilMap = conductorStats.ToDictionary(s => s.Id, s => s.ConductorPerfilId);
+
+            foreach (var item in items)
+            {
+                if (trayectoPerfilMap.TryGetValue(item.Id, out var perfilId) &&
+                    statsPorPerfil.TryGetValue(perfilId, out var stats))
+                {
+                    item.ConductorTotalResenas = stats.Count;
+                    item.ConductorPuntuacionMedia = stats.Item2;
+                }
+            }
+        }
 
         return new ResultadoPaginadoDto<TrayectoResumenDto>(items, total, filtro.Pagina, filtro.TamanoPagina);
     }

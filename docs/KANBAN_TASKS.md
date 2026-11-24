@@ -216,17 +216,17 @@ Este documento contiene la definición completa de las tareas iniciales repartid
 #### [BE-D09] Módulo de Valoraciones, Puntuación Media y Comentarios (1 a 5 ⭐) (#35)
 - **Descripción:** Endpoints y entidad para calificar conductores tras un viaje completado con estrellas y tags.
 - **Criterios de Aceptación:**
-  - [ ] Entidad `VALORACIONES_APP` vinculada a trayecto, conductor y pasajero.
-  - [ ] `POST /api/valoraciones`: Permite calificar de 1 a 5 estrellas, dejar comentario y elegir tags (*"Puntual"*, *"Buena conducción"*).
-  - [ ] `GET /api/conductores/{id}/resenas`: Devuelve la media de estrellas, total de opiniones y comentarios recibidos.
-  - [ ] Las tarjetas de trayectos incluyen el promedio de estrellas del conductor (`ej. ⭐ 4.9`).
+  - [x] Entidad `VALORACIONES_APP` vinculada a trayecto, conductor y pasajero.
+  - [x] `POST /api/valoraciones`: Permite calificar de 1 a 5 estrellas, dejar comentario y elegir tags (*"Puntual"*, *"Buena conducción"*).
+  - [x] `GET /api/conductores/{id}/resenas`: Devuelve la media de estrellas, total de opiniones y comentarios recibidos.
+  - [x] Las tarjetas de trayectos incluyen el promedio de estrellas del conductor (`ej. ⭐ 4.9`).
 
 #### [BE-D10] Calculadora Automática de Coste de Combustible y Ahorro (#36)
 - **Descripción:** Cálculo del gasto aproximado de carburante y desglose individual por plaza ocupada.
 - **Criterios de Aceptación:**
-  - [ ] En `GET /api/trayectos/{id}` se calcula el coste aproximado en base a distancia y plazas ocupadas (ej: 1,20 € por persona).
-  - [ ] Generación del concepto sugerido para Bizum: `"TajamarApp [Origen] - [Fecha]"`.
-  - [ ] Cálculo del ahorro colectivo acumulado frente al uso de transporte individual o taxi.
+  - [x] En `GET /api/trayectos/{id}` se calcula el coste aproximado en base a distancia y plazas ocupadas (ej: 1,20 € por persona).
+  - [x] Generación del concepto sugerido para Bizum: `"TajamarApp [Origen] - [Fecha]"`.
+  - [x] Cálculo del ahorro colectivo acumulado frente al uso de transporte individual o taxi.
 
 ---
 

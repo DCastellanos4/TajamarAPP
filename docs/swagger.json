@@ -641,6 +641,60 @@
         }
       }
     },
+    "/api/trayectos/calcular-coste": {
+      "get": {
+        "tags": [
+          "Trayectos"
+        ],
+        "parameters": [
+          {
+            "name": "origen",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "destino",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "plazas",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimacionCosteDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimacionCosteDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimacionCosteDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/trayectos": {
       "get": {
         "tags": [
@@ -1309,6 +1363,174 @@
           }
         }
       }
+    },
+    "/api/valoraciones": {
+      "post": {
+        "tags": [
+          "Valoraciones"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearValoracionDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearValoracionDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearValoracionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResenaDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResenaDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResenaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conductores/{id}/resenas": {
+      "get": {
+        "tags": [
+          "Valoraciones"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenResenasConductorDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenResenasConductorDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenResenasConductorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1429,6 +1651,15 @@
           "bio": {
             "type": "string",
             "nullable": true
+          },
+          "puntuacionMedia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "totalResenas": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -1481,6 +1712,35 @@
           "eventoId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CrearValoracionDto": {
+        "required": [
+          "trayectoId"
+        ],
+        "type": "object",
+        "properties": {
+          "trayectoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "puntuacion": {
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "comentario": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "maxLength": 250,
+            "type": "string",
             "nullable": true
           }
         },
@@ -1586,6 +1846,44 @@
           "turno": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EstimacionCosteDto": {
+        "type": "object",
+        "properties": {
+          "distanciaKm": {
+            "type": "number",
+            "format": "double"
+          },
+          "costeTotalTrayecto": {
+            "type": "number",
+            "format": "double"
+          },
+          "plazasOcupadas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costePorPlaza": {
+            "type": "number",
+            "format": "double"
+          },
+          "conceptoBizum": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefonoBizum": {
+            "type": "string",
+            "nullable": true
+          },
+          "ahorroEstimadoVsTaxi": {
+            "type": "number",
+            "format": "double"
+          },
+          "co2AhorradoKg": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -2094,6 +2392,60 @@
         },
         "additionalProperties": { }
       },
+      "ResenaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trayectoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorPerfilId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pasajeroUsuarioId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pasajeroNombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "pasajeroFoto": {
+            "type": "string",
+            "nullable": true
+          },
+          "puntuacion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comentario": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "string",
+            "nullable": true
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "origenTrayecto": {
+            "type": "string",
+            "nullable": true
+          },
+          "destinoTrayecto": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ReservaTrayecto": {
         "type": "object",
         "properties": {
@@ -2122,6 +2474,51 @@
           },
           "pasajero": {
             "$ref": "#/components/schemas/UsuarioTajamar"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResumenResenasConductorDto": {
+        "type": "object",
+        "properties": {
+          "conductorIdUsuario": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorPerfilId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorNombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "conductorFoto": {
+            "type": "string",
+            "nullable": true
+          },
+          "puntuacionMedia": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalResenas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "desgloseEstrellas": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "resenas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResenaDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -2292,6 +2689,18 @@
           "fechaCreacion": {
             "type": "string",
             "format": "date-time"
+          },
+          "conductorPuntuacionMedia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "conductorTotalResenas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimacionCoste": {
+            "$ref": "#/components/schemas/EstimacionCosteDto"
           }
         },
         "additionalProperties": false
@@ -2359,6 +2768,15 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "conductorPuntuacionMedia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "conductorTotalResenas": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -2536,6 +2954,9 @@
     },
     {
       "name": "Usuarios"
+    },
+    {
+      "name": "Valoraciones"
     }
   ]
 }
