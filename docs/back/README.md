@@ -10,3 +10,8 @@ En esta carpeta se registra la documentación técnica de los módulos y tareas 
 - [BE-D05: Arquitectura Técnica General](../ARQUITECTURA_BACKEND.md)
 - [BE-D05: Contratos de API REST](../CONTRATOS_API.md)
 - [BE-D05: Contrato OpenAPI JSON](../swagger.json)
+- [BE-D06: Mis Reservas del Pasajero y Gestión de Cancelación](BE-D06_MIS_RESERVAS.md)
+- [BE-D07: Consulta de Pasajeros de Trayecto para el Conductor](BE-D07_PASAJEROS_TRAYECTO.md)
+- [BE-D08: Hub de Notificaciones en Tiempo Real con SignalR](BE-D08_NOTIFICACIONES_SIGNALR.md)
+- [BE-D09: Módulo de Valoraciones, Puntuación Media y Reseñas](BE-D09_VALORACIONES.md)
+- [BE-D10: Calculadora Automática de Coste de Combustible, Bizum y Ahorro](BE-D10_CALCULADORA_COSTE.md)

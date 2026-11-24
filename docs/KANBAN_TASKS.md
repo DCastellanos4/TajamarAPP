@@ -181,3 +181,126 @@ Este documento contiene la definición completa de las tareas iniciales repartid
   - [ ] Modal informativo que explica cómo funciona la lista de espera automática al producirse una baja.
   - [ ] Componente visual de turno: *"Estás en la posición #X de la lista de espera"*.
   - [ ] Opción para salir de la lista de espera en cualquier momento.
+
+---
+
+# 🚀 SPRINT 2: Consolidación y Funcionalidades Estrella (Fase Ganadora)
+
+## 👥 Equipo Backend (.NET 10 + Azure SQL)
+
+### 👤 David (Backend)
+
+#### [BE-D06] Mis Reservas del Pasajero y Gestión de Cancelación (#30)
+- **Descripción:** Implementar el endpoint `GET /api/reservas/mis-reservas` para que el alumno consulte en qué trayectos tiene plaza o está en cola de espera.
+- **Criterios de Aceptación:**
+  - [x] Endpoint `GET /api/reservas/mis-reservas` protegido con JWT.
+  - [x] Retorna lista unificada de reservas del usuario con datos del trayecto (origen, destino, horario) y conductor.
+  - [x] Indica estado (`Confirmada`, `Cancelada`, `EnEspera`) y posición en cola FIFO (`posicionCola`).
+  - [x] El pasajero puede cancelar su reserva (`DELETE /api/reservas/{id}`) liberando plaza o promocionando FIFO.
+
+#### [BE-D07] Consulta de Pasajeros de Trayecto para el Conductor (#31)
+- **Descripción:** Endpoint `GET /api/trayectos/{id}/pasajeros` para que el conductor consulte la lista de alumnos confirmados en su coche.
+- **Criterios de Aceptación:**
+  - [x] Endpoint `GET /api/trayectos/{id}/pasajeros` protegido con JWT.
+  - [x] Validación: solo el conductor propietario puede consultarla (`403 Forbidden` a otros).
+  - [x] Devuelve array de pasajeros confirmados con contacto (nombre, email, teléfono, foto, bio) y lista de espera.
+
+#### [BE-D08] Hub de Notificaciones en Tiempo Real con SignalR (.NET 10) (#34)
+- **Descripción:** Hub de WebSockets `/hubs/notificaciones` autenticado con JWT para emitir eventos instantáneos a usuarios conectados.
+- **Criterios de Aceptación:**
+  - [x] Hub de SignalR registrado con autenticación Bearer token y mapeo por `IdUsuario`.
+  - [x] Evento `NuevaReserva`: Se envía al conductor cuando un alumno reserva plaza.
+  - [x] Evento `PromocionCola`: Se notifica al alumno que pasa de lista de espera a reserva confirmada.
+  - [x] Evento `TrayectoCancelado`: Alerta a los pasajeros confirmados si el viaje se suspende.
+
+#### [BE-D09] Módulo de Valoraciones, Puntuación Media y Comentarios (1 a 5 ⭐) (#35)
+- **Descripción:** Endpoints y entidad para calificar conductores tras un viaje completado con estrellas y tags.
+- **Criterios de Aceptación:**
+  - [x] Entidad `VALORACIONES_APP` vinculada a trayecto, conductor y pasajero.
+  - [x] `POST /api/valoraciones`: Permite calificar de 1 a 5 estrellas, dejar comentario y elegir tags (*"Puntual"*, *"Buena conducción"*).
+  - [x] `GET /api/conductores/{id}/resenas`: Devuelve la media de estrellas, total de opiniones y comentarios recibidos.
+  - [x] Las tarjetas de trayectos incluyen el promedio de estrellas del conductor (`ej. ⭐ 4.9`).
+
+#### [BE-D10] Calculadora Automática de Coste de Combustible y Ahorro (#36)
+- **Descripción:** Cálculo del gasto aproximado de carburante y desglose individual por plaza ocupada.
+- **Criterios de Aceptación:**
+  - [x] En `GET /api/trayectos/{id}` se calcula el coste aproximado en base a distancia y plazas ocupadas (ej: 1,20 € por persona).
+  - [x] Generación del concepto sugerido para Bizum: `"TajamarApp [Origen] - [Fecha]"`.
+  - [x] Cálculo del ahorro colectivo acumulado frente al uso de transporte individual o taxi.
+
+---
+
+### 👤 Mario (Backend)
+
+#### [BE-M06] Servicio en Segundo Plano para Ciclo de Vida de Viajes (IHostedService) (#32)
+- **Descripción:** Servicio en segundo plano (`BackgroundService`) que actualiza a `Finalizado` trayectos pasados y archiva eventos caducados.
+- **Criterios de Aceptación:**
+  - [ ] Clase `TrayectoLifeCycleBackgroundService` registrada como `IHostedService`.
+  - [ ] Temporizador periódico que actualiza trayectos con `FechaHoraSalida < UtcNow` a `Finalizado`.
+  - [ ] Desactiva o archiva eventos pasados (`Activo = false`).
+
+#### [BE-M07] Endpoint Seeder de Datos de Demostración para Pruebas (#33)
+- **Descripción:** Endpoint `POST /api/demo/seed` para poblar de forma controlada la base de datos con viajes realistas por Madrid.
+- **Criterios de Aceptación:**
+  - [ ] Inserta al menos 10-12 trayectos con diversos orígenes hacia Tajamar.
+  - [ ] Mezcla turnos de mañana y tarde con conductores reales de `USUARIOSTAJAMAR`.
+  - [ ] Plazas variadas (llenos con cola de espera, 1 plaza libre, 3 plazas libres).
+
+#### [BE-M08] Motor de Alertas S.O.S y Matching de Rutas (#37)
+- **Descripción:** Endpoints para gestión de emergencias matinales y emparejamiento con conductores cercanos.
+- **Criterios de Aceptación:**
+  - [ ] `POST /api/alertas/sos`: Crea alerta con zona del alumno y hora máxima de llegada a clase.
+  - [ ] `GET /api/alertas/activas`: Filtra alertas abiertas para los conductores que salen de esa misma zona.
+  - [ ] `POST /api/alertas/{id}/rescatar`: El conductor confirma la recogida, reservando automáticamente la plaza.
+
+#### [BE-M09] Motor de Leaderboard del Campus y Medallas de Alumnos (#38)
+- **Descripción:** Endpoints de clasificación general y adjudicación de medallas según hitos de movilidad.
+- **Criterios de Aceptación:**
+  - [ ] `GET /api/ranking/conductores`: Top mensual de alumnos que más compañeros han transportado a clase.
+  - [ ] `GET /api/ranking/pasajeros`: Top de alumnos más activos en coche compartido.
+  - [ ] `GET /api/medallas/me`: Evaluación y entrega automática de medallas (*Salvador de Exámenes*, *Puntualidad Suiza*, *El Coche Escoba*).
+
+---
+
+## 👥 Equipo Frontend (Angular 18+ Standalone)
+
+### 👩 Mónica (Frontend)
+
+#### [FE-M06] Botón Flotante "🚨 S.O.S" y Modal de Rescate Express (#39)
+- **Descripción:** Botón rojo de acción rápida en la barra de navegación y banner visual de rescate.
+- **Criterios de Aceptación:**
+  - [ ] Botón rojo llamativo "S.O.S" visible tanto en móvil como en escritorio.
+  - [ ] Formulario ultrarrápido en 2 clics: selección de zona y hora de entrada.
+  - [ ] Banner destacado en la Home para el conductor: *"¡David necesita que le rescaten en Vallecas para las 08:00! [¡Yo le llevo!]"*.
+
+#### [FE-M07] Modal Interactivo de Valoración y Pestaña de Opiniones en Perfil (#40)
+- **Descripción:** Experiencia de usuario para puntuar con estrellas interactivas y visualización de la reputación del conductor.
+- **Criterios de Aceptación:**
+  - [ ] Diálogo emergente con estrellas interactivas y chips de etiquetas seleccionables (*"Puntual"*, *"Majo"*, *"Buen coche"*).
+  - [ ] Pestaña *"Opiniones"* en la vista de perfil del usuario con desglose de satisfacción.
+  - [ ] Insignia dorada de valoración visible junto al avatar del conductor en el buscador.
+
+---
+
+### 👨 Harry (Frontend)
+
+#### [FE-H06] Servicio SignalR en Angular y Componente Toast de Alertas en Vivo (#41)
+- **Descripción:** Cliente Angular con `@microsoft/signalr` escuchando el hub y mostrando notificaciones visuales animadas.
+- **Criterios de Aceptación:**
+  - [ ] Conexión automática al iniciar sesión con reconexión transparente.
+  - [ ] Componente toast flotante en la esquina superior con animación y sonido sutil.
+  - [ ] Actualización reactiva del contador de plazas libres en la tarjeta del viaje sin recargar la página.
+
+#### [FE-H07] Pantalla "El Podio de Tajamar" y Medallero en Perfil (#42)
+- **Descripción:** Pantalla de clasificaciones estilo podio de videojuegos y vitrina de medallas.
+- **Criterios de Aceptación:**
+  - [ ] Podio visual con 1º, 2º y 3º puesto (Oro, Plata, Bronce) con los avatares reales de los alumnos.
+  - [ ] Tablas de clasificación con scroll e indicador de posición del alumno autenticado.
+  - [ ] Vitrina en el perfil con medallas a color (conseguidas) y en gris con barra de progreso (pendientes).
+
+#### [FE-H08] Desglose de Gastos y Botón Directo "Pagar con Bizum" (#43)
+- **Descripción:** Componente de costes transparentes y enlace rápido de pago móvil.
+- **Criterios de Aceptación:**
+  - [ ] Desglose visual en el detalle del viaje: *"Aportación sugerida para gasolina: 1,20 €"*.
+  - [ ] Botón *"Pagar con Bizum"* que copia en 1 clic el teléfono del conductor y el concepto al portapapeles.
+  - [ ] En dispositivos móviles, lanza directamente el deep link de la app de pagos o Bizum.

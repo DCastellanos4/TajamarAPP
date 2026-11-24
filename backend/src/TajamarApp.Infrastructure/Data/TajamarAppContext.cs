@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TajamarApp.Core.Domain;
 using TajamarApp.Core.Entities;
 
 namespace TajamarApp.Infrastructure.Data;
@@ -22,6 +23,7 @@ public class TajamarAppContext : DbContext
     public DbSet<Trayecto> Trayectos => Set<Trayecto>();
     public DbSet<ReservaTrayecto> ReservasTrayecto => Set<ReservaTrayecto>();
     public DbSet<ColaEspera> ColasEspera => Set<ColaEspera>();
+    public DbSet<ValoracionApp> ValoracionesApp => Set<ValoracionApp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -198,6 +200,36 @@ public class TajamarAppContext : DbContext
                 .WithMany(p => p.ColasEspera)
                 .HasForeignKey(d => d.UsuarioTajamarId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ValoracionApp>(entity =>
+        {
+            entity.ToTable("VALORACIONES_APP");
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.TrayectoId, e.PasajeroUsuarioId }).IsUnique().HasDatabaseName("UQ_Valoracion_Trayecto_Pasajero");
+
+            entity.Property(e => e.Puntuacion).IsRequired();
+            entity.Property(e => e.Comentario).HasMaxLength(500);
+            entity.Property(e => e.Tags).HasMaxLength(250);
+            entity.Property(e => e.FechaCreacion).HasDefaultValueSql("SYSUTCDATETIME()");
+
+            entity.HasOne(d => d.Trayecto)
+                .WithMany()
+                .HasForeignKey(d => d.TrayectoId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_VALORACIONES_TRAYECTO");
+
+            entity.HasOne(d => d.Conductor)
+                .WithMany()
+                .HasForeignKey(d => d.ConductorPerfilId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_VALORACIONES_CONDUCTOR");
+
+            entity.HasOne(d => d.Pasajero)
+                .WithMany()
+                .HasForeignKey(d => d.PasajeroUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_VALORACIONES_PASAJERO");
         });
     }
 }
