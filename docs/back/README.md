@@ -10,3 +10,4 @@ En esta carpeta se registra la documentación técnica de los módulos y tareas 
 - [BE-D05: Arquitectura Técnica General](../ARQUITECTURA_BACKEND.md)
 - [BE-D05: Contratos de API REST](../CONTRATOS_API.md)
 - [BE-D05: Contrato OpenAPI JSON](../swagger.json)
+- [BE-D06: Mis Reservas del Pasajero y Gestión de Cancelación](BE-D06_MIS_RESERVAS.md)

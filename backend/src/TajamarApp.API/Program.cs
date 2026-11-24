@@ -46,6 +46,7 @@ public static class TajamarApplication
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IPerfilService, PerfilService>();
         builder.Services.AddScoped<ITrayectoService, TrayectoService>();
+        builder.Services.AddScoped<IReservaService, ReservaService>();
 
         // 4. Autenticación JWT Bearer
         var jwtSecret = builder.Configuration["JwtSettings:Secret"] 

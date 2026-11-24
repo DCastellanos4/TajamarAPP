@@ -411,6 +411,46 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
 - **Comportamiento:** Si hay usuarios en cola de espera, el primero es automáticamente promocionado a reserva `Confirmada`. Si no hay nadie en espera, la plaza vuelve a estar disponible (`PlazasDisponibles + 1`).
 - **Respuesta `204 NoContent`**.
 
+### 6.4. Consultar Mis Reservas del Pasajero
+- **Método:** `GET`
+- **Ruta:** `/api/reservas/mis-reservas`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuesta `200 OK`:**
+```json
+[
+  {
+    "id": 7,
+    "tipoEntrada": "Reserva",
+    "idReserva": 7,
+    "idCola": null,
+    "estado": "Confirmada",
+    "posicionCola": null,
+    "fechaRegistro": "2026-11-24T08:10:26.449Z",
+    "trayectoId": 4,
+    "origen": "Vallecas Central",
+    "destino": "Tajamar",
+    "fechaHoraSalida": "2026-11-28T08:00:00",
+    "tipoTrayecto": "Recurrente",
+    "modalidad": "IdaYVuelta",
+    "turno": "Manana",
+    "diasSemana": "L,M,X,J,V",
+    "plazasTotales": 3,
+    "plazasDisponibles": 2,
+    "estadoTrayecto": "Activo",
+    "conductorNombre": "David Castellanos",
+    "coche": "Seat Ibiza",
+    "matricula": "1234XYZ"
+  }
+]
+```
+
+### 6.5. Salir Voluntariamente de la Cola de Espera
+- **Método:** `DELETE`
+- **Ruta:** `/api/reservas/cola/{idCola}`
+- **Headers:** `Authorization: Bearer <token>`
+- **Comportamiento:** Marca la entrada como `Cancelado` y reajusta automáticamente las posiciones de los alumnos restantes en la cola FIFO.
+- **Respuesta `200 OK`:** `{"mensaje": "Has salido de la lista de espera correctamente."}`
+
 ---
 
 ## 7. Health Check (`/api/health`)
