@@ -12,11 +12,12 @@ public static class Reservations
 
     public static void MapReservations(this RouteGroupBuilder api)
     {
-        api.MapPost("/trayectos/{id:int}/reservar", (int id, HttpContext http, Database db, TimeProvider clock,
+        var group = api.WithTags("Reservas");
+        group.MapPost("/trayectos/{id:int}/reservar", (int id, HttpContext http, Database db, TimeProvider clock,
             CancellationToken ct) => Join(id, TeamJwt.UserId(http.User), false, db, clock, ct));
-        api.MapPost("/trayectos/{id:int}/cola", (int id, HttpContext http, Database db, TimeProvider clock,
+        group.MapPost("/trayectos/{id:int}/cola", (int id, HttpContext http, Database db, TimeProvider clock,
             CancellationToken ct) => Join(id, TeamJwt.UserId(http.User), true, db, clock, ct));
-        api.MapDelete("/reservas/{id:int}", (int id, HttpContext http, Database db, TimeProvider clock,
+        group.MapDelete("/reservas/{id:int}", (int id, HttpContext http, Database db, TimeProvider clock,
             CancellationToken ct) => Cancel(id, TeamJwt.UserId(http.User), db, clock, ct));
     }
 

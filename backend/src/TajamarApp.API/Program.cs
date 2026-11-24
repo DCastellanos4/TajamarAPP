@@ -86,8 +86,12 @@ public static class TajamarApplication
                 policy.RequireRole("GestorEventos", "Administrador"));
         });
 
-        // 6. Controladores
+        // 6. Controladores y Enrutamiento (URLs en minúsculas estándar para frontend)
         builder.Services.AddControllers();
+        builder.Services.Configure<RouteOptions>(options =>
+        {
+            options.LowercaseUrls = true;
+        });
 
         // 7. CORS para Angular
         builder.Services.AddCors(options =>

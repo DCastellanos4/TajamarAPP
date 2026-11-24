@@ -5,7 +5,7 @@
     "version": "1.0"
   },
   "paths": {
-    "/api/Auth/login": {
+    "/api/auth/login": {
       "post": {
         "tags": [
           "Auth"
@@ -73,7 +73,7 @@
         }
       }
     },
-    "/api/Cursos": {
+    "/api/cursos": {
       "get": {
         "tags": [
           "Cursos"
@@ -111,7 +111,7 @@
         }
       }
     },
-    "/api/Cursos/{id}": {
+    "/api/cursos/{id}": {
       "get": {
         "tags": [
           "Cursos"
@@ -154,7 +154,7 @@
     "/api/eventos": {
       "get": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "responses": {
           "200": {
@@ -164,7 +164,7 @@
       },
       "post": {
         "tags": [
-          "TajamarApp.API"
+          "Eventos"
         ],
         "requestBody": {
           "content": {
@@ -186,7 +186,7 @@
     "/api/eventos/{id}": {
       "get": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "operationId": "DetalleEvento",
         "parameters": [
@@ -208,7 +208,7 @@
       },
       "put": {
         "tags": [
-          "TajamarApp.API"
+          "Eventos"
         ],
         "parameters": [
           {
@@ -241,7 +241,7 @@
     "/api/eventos/{id}/asistir": {
       "post": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "parameters": [
           {
@@ -262,7 +262,7 @@
       },
       "delete": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "parameters": [
           {
@@ -282,7 +282,7 @@
         }
       }
     },
-    "/api/Health": {
+    "/api/health": {
       "get": {
         "tags": [
           "Health"
@@ -294,7 +294,7 @@
         }
       }
     },
-    "/api/Perfil/me": {
+    "/api/perfil/me": {
       "get": {
         "tags": [
           "Perfil"
@@ -363,7 +363,7 @@
         }
       }
     },
-    "/api/Perfil": {
+    "/api/perfil": {
       "post": {
         "tags": [
           "Perfil"
@@ -451,7 +451,76 @@
         }
       }
     },
-    "/api/Reservas/mis-reservas": {
+    "/api/trayectos/{id}/reservar": {
+      "post": {
+        "tags": [
+          "Reservas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/trayectos/{id}/cola": {
+      "post": {
+        "tags": [
+          "Reservas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/reservas/{id}": {
+      "delete": {
+        "tags": [
+          "Reservas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/reservas/mis-reservas": {
       "get": {
         "tags": [
           "Reservas"
@@ -509,7 +578,7 @@
         }
       }
     },
-    "/api/Reservas/cola/{idCola}": {
+    "/api/reservas/cola/{idCola}": {
       "delete": {
         "tags": [
           "Reservas"
@@ -572,76 +641,7 @@
         }
       }
     },
-    "/api/trayectos/{id}/reservar": {
-      "post": {
-        "tags": [
-          "TajamarApp.API"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/trayectos/{id}/cola": {
-      "post": {
-        "tags": [
-          "TajamarApp.API"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/reservas/{id}": {
-      "delete": {
-        "tags": [
-          "TajamarApp.API"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Trayectos": {
+    "/api/trayectos": {
       "get": {
         "tags": [
           "Trayectos"
@@ -836,7 +836,7 @@
         }
       }
     },
-    "/api/Trayectos/{id}": {
+    "/api/trayectos/{id}": {
       "get": {
         "tags": [
           "Trayectos"
@@ -1094,7 +1094,7 @@
         }
       }
     },
-    "/api/Trayectos/mis-viajes": {
+    "/api/trayectos/mis-viajes": {
       "get": {
         "tags": [
           "Trayectos"
@@ -1152,7 +1152,7 @@
         }
       }
     },
-    "/api/Trayectos/{id}/pasajeros": {
+    "/api/trayectos/{id}/pasajeros": {
       "get": {
         "tags": [
           "Trayectos"
@@ -1252,7 +1252,7 @@
         }
       }
     },
-    "/api/Usuarios": {
+    "/api/usuarios": {
       "get": {
         "tags": [
           "Usuarios"
@@ -1264,7 +1264,7 @@
         }
       }
     },
-    "/api/Usuarios/{id}": {
+    "/api/usuarios/{id}": {
       "get": {
         "tags": [
           "Usuarios"
@@ -1287,7 +1287,7 @@
         }
       }
     },
-    "/api/Usuarios/curso/{idCurso}": {
+    "/api/usuarios/curso/{idCurso}": {
       "get": {
         "tags": [
           "Usuarios"
@@ -2520,10 +2520,7 @@
       "name": "Cursos"
     },
     {
-      "name": "Events"
-    },
-    {
-      "name": "TajamarApp.API"
+      "name": "Eventos"
     },
     {
       "name": "Health"
