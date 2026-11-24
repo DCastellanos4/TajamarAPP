@@ -10,10 +10,12 @@ namespace TajamarApp.Infrastructure.Services;
 public class TrayectoService : ITrayectoService
 {
     private readonly TajamarAppContext _context;
+    private readonly INotificacionService? _notificacionService;
 
-    public TrayectoService(TajamarAppContext context)
+    public TrayectoService(TajamarAppContext context, INotificacionService? notificacionService = null)
     {
         _context = context;
+        _notificacionService = notificacionService;
     }
 
     public async Task<TrayectoDetalleDto> CrearTrayectoAsync(int idUsuario, CrearTrayectoDto dto)
@@ -287,6 +289,21 @@ public class TrayectoService : ITrayectoService
 
         trayecto.Estado = "Cancelado";
         await _context.SaveChangesAsync();
+
+        // Notificar a los pasajeros confirmados en tiempo real con SignalR
+        if (_notificacionService != null)
+        {
+            var pasajerosIds = await _context.ReservasTrayecto
+                .Where(r => r.TrayectoId == idTrayecto && r.Estado == "Confirmada")
+                .Select(r => r.PasajeroUsuarioId)
+                .ToListAsync();
+
+            if (pasajerosIds.Any())
+            {
+                await _notificacionService.NotificarTrayectoCanceladoAsync(
+                    pasajerosIds, idTrayecto, trayecto.Origen, trayecto.Destino);
+            }
+        }
 
         return true;
     }

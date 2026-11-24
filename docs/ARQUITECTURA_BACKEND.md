@@ -15,17 +15,28 @@ backend/
     ├── TajamarApp.Core/             # Núcleo de Dominio (Sin dependencias externas)
     │   ├── Entities/                # Entidades de base de datos
     │   ├── DTOs/                    # Data Transfer Objects agrupados por módulo
-    │   └── Interfaces/              # Contratos de servicios y repositorios
+    │   │   ├── Auth/
+    │   │   ├── Perfil/
+    │   │   ├── Trayectos/
+    │   │   ├── Notificaciones/      # NotificacionDto
+    │   │   └── Common/
+    │   └── Interfaces/              # Contratos de servicios, clientes e interfaces
+    │       ├── IAuthService.cs, IJwtService.cs, ITrayectoService.cs, IReservaService.cs
+    │       ├── INotificacionService.cs
+    │       └── INotificacionClient.cs
     │
     ├── TajamarApp.Infrastructure/   # Acceso a datos y lógica de infraestructura
     │   ├── Data/                    # DbContext y configuración Fluent API
     │   ├── Migrations/              # Migraciones de EF Core
     │   └── Services/                # Implementación de la lógica de negocio
     │
-    └── TajamarApp.API/              # Capa de presentación y servicios REST
+    └── TajamarApp.API/              # Capa de presentación y servicios REST / WebSockets
         ├── Controllers/             # Controladores REST API
+        ├── Features/                # Minimal API Route Groups (Events, Reservations)
+        ├── Hubs/                    # Hubs de SignalR y Providers (NotificacionesHub, CustomUserIdProvider)
+        ├── Services/                # Servicios API (NotificacionService con IHubContext)
         ├── Properties/              # launchSettings.json y perfiles
-        └── Program.cs               # Pipeline HTTP, inyección de dependencias, CORS, JWT y Swagger
+        └── Program.cs               # Pipeline HTTP, WebSockets, DI, CORS, JWT y Swagger
 ```
 
 ### 1.1. `TajamarApp.Core`
@@ -36,10 +47,13 @@ Es la capa central independiente de frameworks externos o librerías de persiste
 - **`DTOs/`**:
   - `Auth/`: `LoginRequestDto`, `LoginResponseDto`.
   - `Perfil/`: `PerfilDto`, `ActualizarPerfilDto`.
-  - `Trayectos/`: `CrearTrayectoDto`, `EditarTrayectoDto`, `FiltroTrayectosDto`, `TrayectoDetalleDto`, `TrayectoResumenDto`, `ConductorResumenDto`.
+  - `Trayectos/`: `CrearTrayectoDto`, `EditarTrayectoDto`, `FiltroTrayectosDto`, `TrayectoDetalleDto`, `TrayectoResumenDto`, `ConductorResumenDto`, `PasajerosTrayectoDto`.
+  - `Notificaciones/`: `NotificacionDto`.
   - `Common/`: `ResultadoPaginadoDto<T>`.
 - **`Interfaces/`**:
-  - `IAuthService`, `IJwtService`, `ITrayectoService`.
+  - `IAuthService`, `IJwtService`, `ITrayectoService`, `IReservaService`.
+  - `INotificacionService`: Contrato de emisión de notificaciones desacoplado de la tecnología de transporte.
+  - `INotificacionClient`: Contrato fuertemente tipado para los clientes del Hub de SignalR.
 
 ### 1.2. `TajamarApp.Infrastructure`
 Implementa el acceso a datos y la interacción con Azure SQL Database.
@@ -47,15 +61,20 @@ Implementa el acceso a datos y la interacción con Azure SQL Database.
 - **`Services/`**:
   - `AuthService`: Autenticación con verificación de contraseña hash contra `USUARIOSTAJAMAR` y detección de perfil completado (`PERFIL_APP`).
   - `JwtService`: Generación de tokens JWT Bearer firmados con clave simétrica `HMAC-SHA256`.
-  - `TrayectoService`: Lógica CRUD, validaciones de conductor, capacidad de vehículo, estados y motor de búsqueda con filtros dinámicos y paginación.
+  - `TrayectoService`: Lógica CRUD, validaciones de conductor, capacidad de vehículo, estados, motor de búsqueda con filtros dinámicos, consulta de pasajeros y emisión de notificaciones de cancelación vía `INotificacionService`.
+  - `ReservaService`: Gestión de reservas del pasajero y cancelación en cola FIFO.
 
 ### 1.3. `TajamarApp.API`
-Punto de entrada Web API que expone los servicios REST JSON.
-- **Controllers**: Controladores ligeros que delegan directamente a los servicios inyectados (`AuthController`, `PerfilController`, `TrayectosController`, `CursosController`, `UsuariosController`).
+Punto de entrada Web API y servidor de WebSockets en tiempo real.
+- **Controllers**: Controladores REST API (`AuthController`, `PerfilController`, `TrayectosController`, `CursosController`, `UsuariosController`, `ReservasController`, `HealthController`).
+- **Features**: Grupos de rutas Minimal API estandarizados (`Events`, `Reservations`) con transacciones optimizadas y concurrencia pesimista.
+- **Hubs**: Hubs de comunicación bidireccional (`NotificacionesHub`) y mapeador de identificador de usuario (`CustomUserIdProvider`).
+- **Services**: Servicios propios de la capa API como `NotificacionService` (que inyecta `IHubContext<NotificacionesHub, INotificacionClient>`).
 - **Program.cs**: Configuración centralizada de:
   - Base de datos (`AddDbContext<TajamarAppContext>`).
-  - Autenticación JWT Bearer (`AddAuthentication` + `AddJwtBearer`).
-  - Swagger / OpenAPI con soporte para el botón `Authorize` (Bearer token).
+  - Autenticación JWT Bearer con soporte para WebSockets (`JwtBearerEvents.OnMessageReceived` interceptando `?access_token=`).
+  - SignalR con Hub fuertemente tipado y `IUserIdProvider` personalizado.
+  - Swagger / OpenAPI con soporte para el botón `Authorize` (Bearer token) y URLs en minúsculas (`LowercaseUrls = true`).
   - CORS habilitado para el cliente Angular (`http://localhost:4200`).
 
 ---
@@ -171,7 +190,11 @@ En `Program.cs`, los servicios están registrados con ciclo de vida **Scoped** (
 | `TajamarAppContext` | `TajamarAppContext` | Scoped | Contexto EF Core y persistencia en Azure SQL |
 | `IJwtService` | `JwtService` | Scoped | Generación y firma de tokens JWT |
 | `IAuthService` | `AuthService` | Scoped | Validación de credenciales y perfiles |
-| `ITrayectoService` | `TrayectoService` | Scoped | Lógica CRUD, filtrado dinámico y validaciones de viajes |
+| `IPerfilService` | `PerfilService` | Scoped | Lógica de negocio de perfiles extendidos de conductor y pasajero |
+| `ITrayectoService` | `TrayectoService` | Scoped | Lógica CRUD, filtrado dinámico, gestión de pasajeros y avisos de cancelación |
+| `IReservaService` | `ReservaService` | Scoped | Consultas de reservas del usuario y bajas de lista de espera FIFO |
+| `INotificacionService` | `NotificacionService` | Scoped | Emisión de notificaciones push en tiempo real hacia el Hub de SignalR |
+| `IUserIdProvider` | `CustomUserIdProvider` | Singleton | Mapeo de identidad en WebSockets extrayendo el claim `idUsuarioTajamar` |
 | `Database` | `Database` | Singleton | Helper de concurrencia y transacciones ADO.NET para reservas |
 | `TimeProvider` | `TimeProvider.System` | Singleton | Abstracción de reloj para pruebas y cálculo de fechas |
 
@@ -186,3 +209,42 @@ En `Program.cs`, los servicios están registrados con ciclo de vida **Scoped** (
 5. **Búsqueda Eficiente:** El buscador aplica `AsNoTracking()` para minimizar la huella de memoria y realiza un `CountAsync()` antes de paginar con `.Skip()` y `.Take()`.
 6. **Bloqueo Concurrente Anti-Carreras:** En `POST /api/trayectos/{id}/reservar`, la fila se bloquea con `WITH (UPDLOCK, HOLDLOCK)`. Si se agota la última plaza, el estado cambia automáticamente a `Completo` y las solicitudes posteriores reciben `409 PLAZAS_AGOTADAS` invitando a la cola.
 7. **Motor de Cola FIFO y Auto-Promoción:** Cuando un pasajero cancela su reserva (`DELETE /api/reservas/{id}`), el sistema examina `COLA_ESPERA`. El primer alumno según FIFO se promociona inmediatamente a reserva `Confirmada` y se reasignan las posiciones de los demás.
+
+---
+
+## 📡 6. Comunicación en Tiempo Real (SignalR)
+
+Para eliminar la sobrecarga de consultas recurrentes (polling) y ofrecer una experiencia reactiva instantánea a pasajeros y conductores, el backend implementa una capa de comunicación basada en **WebSockets** mediante **ASP.NET Core SignalR**:
+
+### 6.1. Hub Fuertemente Tipado (`Hub<INotificacionClient>`)
+En lugar de invocar cadenas mágicas de métodos, el Hub `NotificacionesHub` hereda de `Hub<INotificacionClient>`. Esto garantiza seguridad en tiempo de compilación para todos los eventos del cliente:
+- `RecibirNotificacion(NotificacionDto)`
+- `NuevaReserva(NotificacionDto)`
+- `PromocionCola(NotificacionDto)`
+- `TrayectoCancelado(NotificacionDto)`
+
+### 6.2. Mapeo de Identidad con `CustomUserIdProvider`
+Dado que el identificador relacional del alumno en `USUARIOSTAJAMAR` viaja en el claim personalizado `idUsuarioTajamar`, se implementó un `IUserIdProvider` que prioriza este claim sobre el estándar `NameIdentifier`. Esto permite que el servicio emisor invoque directamente:
+```csharp
+_hubContext.Clients.User(idUsuario.ToString()).NuevaReserva(notificacion);
+```
+impactando de forma unívoca a todas las pestañas o dispositivos abiertos por dicho alumno.
+
+### 6.3. Autenticación JWT en Handshake WebSocket
+Los navegadores web no permiten configurar cabeceras HTTP personalizadas al instanciar un WebSocket (`new WebSocket(...)`). Por ello, se configuró el middleware de autenticación (`JwtBearerEvents.OnMessageReceived`) para interceptar el token JWT pasado como query parameter:
+```csharp
+var accessToken = context.Request.Query["access_token"];
+var path = context.HttpContext.Request.Path;
+if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+{
+    context.Token = accessToken;
+}
+```
+Esto habilita la protección del Hub con el atributo estándar `[Authorize]`, rechazando con `401 Unauthorized` cualquier intento de conexión anónima o con token expirado.
+
+### 6.4. Servicio Orquestador `INotificacionService`
+La lógica de negocio de la aplicación (en `Features/Reservations/Reservations.cs` y `Services/TrayectoService.cs`) nunca interactúa directamente con WebSockets ni con sockets de bajo nivel. En su lugar, inyecta `INotificacionService`:
+- Desacopla completamente el dominio de los detalles de transporte.
+- Centraliza la construcción del DTO enriquecido `NotificacionDto` con sus metadatos (`trayectoId`, `origen`, `destino`, `nombrePasajero`).
+- Emite en paralelo (`Task.WhenAll`) hacia el canal específico y hacia el canal general `RecibirNotificacion`.
+- Facilita la creación de mocks en pruebas unitarias e integración continua.

@@ -15,7 +15,8 @@ Este documento sirve como referencia oficial para los desarrolladores Frontend (
 4. [Módulo Académico Tajamar (`/api/cursos`, `/api/usuarios`)](#4-módulo-académico-tajamar-apicursos-apiusuarios)
 5. [Módulo de Eventos y Asistencia (`/api/eventos`)](#5-módulo-de-eventos-y-asistencia-apieventos)
 6. [Módulo de Reservas y Cola FIFO (`/api/trayectos/{id}/reservar`, `/api/trayectos/{id}/cola`, `/api/reservas/{id}`)](#6-módulo-de-reservas-y-cola-fifo)
-7. [Health Check (`/api/health`)](#7-health-check-apihealth)
+7. [Hub de Notificaciones en Tiempo Real SignalR (`/hubs/notificaciones`)](#7-hub-de-notificaciones-en-tiempo-real-signalr-hubsnotificaciones)
+8. [Health Check (`/api/health`)](#8-health-check-apihealth)
 
 ---
 
@@ -329,11 +330,53 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
 ]
 ```
 
-### 4.2. Listar Usuarios del Ecosistema
+### 4.2. Obtener Detalle de Curso
+- **Método:** `GET`
+- **Ruta:** `/api/cursos/{id}`
+- **Acceso:** Público / Autenticado
+- **Respuestas:**
+  - **`200 OK`**:
+    ```json
+    {
+      "idCurso": 3597,
+      "nombre": "Master Desarrollo 2026-2027"
+    }
+    ```
+  - **`404 Not Found`**: `{"mensaje": "Curso con ID 999 no encontrado."}`
+
+### 4.3. Listar Usuarios del Ecosistema
 - **Método:** `GET`
 - **Ruta:** `/api/usuarios`
 - **Acceso:** Público / Autenticado
-- **Respuesta `200 OK`:** Listado de usuarios/alumnos/profesores de Tajamar con su rol y avatar.
+- **Respuesta `200 OK`:**
+```json
+[
+  {
+    "idUsuario": 212,
+    "nombre": "David",
+    "apellidos": "Castellanos",
+    "email": "david.castellanos@tajamar365.com",
+    "estado": "ACTIVO",
+    "imagen": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/212_user.jpg",
+    "rol": "Alumno",
+    "tienePerfilApp": true
+  }
+]
+```
+
+### 4.4. Obtener Detalle de Usuario
+- **Método:** `GET`
+- **Ruta:** `/api/usuarios/{id}`
+- **Acceso:** Público / Autenticado
+- **Respuestas:**
+  - **`200 OK`**: Retorna el usuario junto a su `perfilApp` (si lo ha completado).
+  - **`404 Not Found`**: `{"mensaje": "Usuario con ID 999 no encontrado."}`
+
+### 4.5. Listar Alumnos por Curso
+- **Método:** `GET`
+- **Ruta:** `/api/usuarios/curso/{idCurso}`
+- **Acceso:** Público / Autenticado
+- **Respuesta `200 OK`:** Array de alumnos matriculados en dicho curso.
 
 ---
 
@@ -500,7 +543,92 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
 
 ---
 
-## 7. Health Check (`/api/health`)
+## 7. Hub de Notificaciones en Tiempo Real SignalR (`/hubs/notificaciones`)
+
+Canal de WebSockets bidireccional implementado con SignalR (.NET 10) para alertar reactivamente a los clientes de incidencias y cambios de estado en trayectos y reservas.
+
+- **Ruta de Conexión:** `/hubs/notificaciones`
+- **Transportes:** WebSockets (preferente), Server-Sent Events, Long Polling.
+- **Autenticación (Handshake):** Debido a que la API nativa de WebSockets en el navegador no permite cabeceras HTTP personalizadas durante el handshake, el token JWT debe transmitirse en la URL como Query Parameter:
+  ```
+  wss://localhost:5050/hubs/notificaciones?access_token=<JWT_TOKEN>
+  ```
+- **Mapeo de Identidad:** `CustomUserIdProvider` asocia automáticamente la conexión con el claim `idUsuarioTajamar`. Al iniciar sesión, el usuario entra al grupo de difusión personal `usuario_{idUsuario}`.
+
+### 7.1. Invocaciones Cliente -> Servidor (Métodos del Hub)
+- `UnirseATrayecto(int trayectoId)`: Suscribe el socket al grupo `trayecto_{trayectoId}` para recibir avisos específicos de ese viaje.
+- `SalirDeTrayecto(int trayectoId)`: Da de baja al socket del grupo `trayecto_{trayectoId}`.
+
+### 7.2. Eventos Servidor -> Cliente (`INotificacionClient`)
+Los mensajes se emiten utilizando el contrato fuertemente tipado `INotificacionClient`. Cada notificación se envía en paralelo a su evento específico y al canal general `RecibirNotificacion`:
+
+| Evento SignalR | Destinatario | Momento de Emisión |
+| :--- | :--- | :--- |
+| `NuevaReserva` | Conductor del trayecto | Cuando un alumno confirma una reserva en `POST /api/trayectos/{id}/reservar`. |
+| `PromocionCola` | Alumno en cola FIFO | Cuando un pasajero cancela su plaza y el alumno avanza automáticamente a reserva confirmada. |
+| `TrayectoCancelado` | Pasajeros confirmados | Cuando el conductor cancela el trayecto en `DELETE /api/trayectos/{id}`. |
+| `RecibirNotificacion` | Todos los anteriores | Canal unificado que recibe cualquier notificación del sistema. |
+
+### 7.3. Formato del Mensaje (`NotificacionDto`)
+```typescript
+interface NotificacionDto {
+  tipo: string;                      // "NUEVA_RESERVA" | "PROMOCION_COLA" | "TRAYECTO_CANCELADO"
+  titulo: string;                    // Título descriptivo para toasts / alertas
+  mensaje: string;                   // Cuerpo de la notificación
+  fecha: string;                     // Timestamp ISO UTC
+  datos: Record<string, any>;        // Metadatos { trayectoId, origen, destino, nombrePasajero... }
+}
+```
+
+#### Ejemplo de Mensaje `NuevaReserva`:
+```json
+{
+  "tipo": "NUEVA_RESERVA",
+  "titulo": "¡Nueva plaza reservada!",
+  "mensaje": "Sara Ulgazi ha reservado una plaza en tu trayecto de Vallecas Central a Tajamar.",
+  "fecha": "2026-11-24T10:45:00.123Z",
+  "datos": {
+    "trayectoId": 4,
+    "nombrePasajero": "Sara Ulgazi",
+    "origen": "Vallecas Central",
+    "destino": "Tajamar"
+  }
+}
+```
+
+#### Ejemplo de Mensaje `PromocionCola`:
+```json
+{
+  "tipo": "PROMOCION_COLA",
+  "titulo": "¡Plaza confirmada!",
+  "mensaje": "¡Buenas noticias! Se ha liberado una plaza y se ha confirmado tu reserva en el trayecto de Vallecas Central a Tajamar.",
+  "fecha": "2026-11-24T10:46:12.456Z",
+  "datos": {
+    "trayectoId": 4,
+    "origen": "Vallecas Central",
+    "destino": "Tajamar"
+  }
+}
+```
+
+#### Ejemplo de Mensaje `TrayectoCancelado`:
+```json
+{
+  "tipo": "TRAYECTO_CANCELADO",
+  "titulo": "Trayecto cancelado",
+  "mensaje": "El conductor ha cancelado el trayecto de Vallecas Central a Tajamar.",
+  "fecha": "2026-11-24T10:48:30.789Z",
+  "datos": {
+    "trayectoId": 4,
+    "origen": "Vallecas Central",
+    "destino": "Tajamar"
+  }
+}
+```
+
+---
+
+## 8. Health Check (`/api/health`)
 
 - **Método:** `GET`
 - **Ruta:** `/api/health`
