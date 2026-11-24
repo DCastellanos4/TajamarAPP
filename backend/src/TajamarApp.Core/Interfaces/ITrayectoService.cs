@@ -11,4 +11,5 @@ public interface ITrayectoService
     Task<TrayectoDetalleDto?> EditarTrayectoAsync(int idUsuario, int idTrayecto, EditarTrayectoDto dto);
     Task<bool> CancelarTrayectoAsync(int idUsuario, int idTrayecto);
     Task<ResultadoPaginadoDto<TrayectoResumenDto>> BuscarTrayectosAsync(FiltroTrayectosDto filtro);
+    Task<PasajerosTrayectoDto?> GetPasajerosTrayectoAsync(int idUsuarioConductor, int idTrayecto);
 }

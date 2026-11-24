@@ -264,6 +264,53 @@ Obtiene los datos del usuario en Tajamar junto a sus datos extendidos de la app 
   - **`200 OK`**: `{"mensaje": "Trayecto cancelado correctamente."}`
   - **`403 Forbidden`**: Si el trayecto no pertenece al conductor autenticado.
 
+### 3.7. Consultar pasajeros confirmados y lista de espera de un trayecto (Conductor)
+- **Método:** `GET`
+- **Ruta:** `/api/trayectos/{id}/pasajeros`
+- **Headers:** `Authorization: Bearer <token>`
+- **Respuestas:**
+  - **`200 OK`**:
+    ```json
+    {
+      "trayectoId": 4,
+      "origen": "Vallecas Central",
+      "destino": "Tajamar",
+      "fechaHoraSalida": "2026-11-28T08:00:00",
+      "plazasTotales": 3,
+      "plazasDisponibles": 0,
+      "plazasOcupadas": 3,
+      "estado": "Completo",
+      "pasajerosConfirmados": [
+        {
+          "idReserva": 8,
+          "idUsuario": 195,
+          "nombre": "Sara",
+          "apellidos": "Ulgazi El Yaghmouri",
+          "email": "sara.ulgazi@tajamar365.com",
+          "foto": "https://apicharlasalumnotajamar.azurewebsites.net/images/users/195_user.jpg",
+          "telefono": null,
+          "bio": null,
+          "fechaReserva": "2026-11-24T08:10:38.116Z",
+          "estado": "Confirmada"
+        }
+      ],
+      "alumnosEnCola": [
+        {
+          "idCola": 6,
+          "idUsuario": 196,
+          "posicion": 1,
+          "nombre": "Bryan Jefferson",
+          "apellidos": "Rocabado Corrales",
+          "foto": "https://cdn.pixabay.com/photo/2017/11/10/05/48/user-2935527_640.png",
+          "fechaRegistro": "2026-11-24T09:18:45.386Z"
+        }
+      ]
+    }
+    ```
+  - **`401 Unauthorized`**: Token ausente o inválido.
+  - **`403 Forbidden`**: Si el usuario no es el conductor del trayecto o no tiene perfil de conductor.
+  - **`404 NotFound`**: Si el trayecto no existe.
+
 ---
 
 ## 4. Módulo Académico Tajamar (`/api/cursos`, `/api/usuarios`)

@@ -383,4 +383,86 @@ public class TrayectoService : ITrayectoService
 
         return new ResultadoPaginadoDto<TrayectoResumenDto>(items, total, filtro.Pagina, filtro.TamanoPagina);
     }
+
+    public async Task<PasajerosTrayectoDto?> GetPasajerosTrayectoAsync(int idUsuarioConductor, int idTrayecto)
+    {
+        var perfilConductor = await _context.PerfilesApp
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUsuarioTajamar == idUsuarioConductor);
+
+        if (perfilConductor == null)
+        {
+            throw new UnauthorizedAccessException("Perfil de conductor no encontrado.");
+        }
+
+        var trayecto = await _context.Trayectos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == idTrayecto);
+
+        if (trayecto == null)
+        {
+            return null;
+        }
+
+        if (trayecto.ConductorPerfilId != perfilConductor.Id)
+        {
+            throw new UnauthorizedAccessException("No tienes permiso para ver los pasajeros de un trayecto que no es tuyo.");
+        }
+
+        // 1. Obtener pasajeros confirmados con sus datos de contacto y perfil
+        var reservas = await _context.ReservasTrayecto
+            .AsNoTracking()
+            .Include(r => r.Pasajero)
+                .ThenInclude(p => p.PerfilApp)
+            .Where(r => r.TrayectoId == idTrayecto && r.Estado == "Confirmada")
+            .OrderBy(r => r.FechaReserva)
+            .ToListAsync();
+
+        var pasajerosConfirmados = reservas.Select(r => new PasajeroResumenDto
+        {
+            IdReserva = r.Id,
+            IdUsuario = r.PasajeroUsuarioId,
+            Nombre = r.Pasajero.Nombre,
+            Apellidos = r.Pasajero.Apellidos,
+            Email = r.Pasajero.Email,
+            Foto = r.Pasajero.Imagen,
+            Telefono = r.Pasajero.PerfilApp?.Telefono,
+            Bio = r.Pasajero.PerfilApp?.Bio,
+            FechaReserva = r.FechaReserva,
+            Estado = r.Estado
+        }).ToList();
+
+        // 2. Obtener alumnos en cola de espera (FIFO)
+        var colas = await _context.ColasEspera
+            .AsNoTracking()
+            .Include(c => c.Usuario)
+            .Where(c => c.TrayectoId == idTrayecto && c.Estado == "EnEspera")
+            .OrderBy(c => c.Posicion)
+            .ThenBy(c => c.Id)
+            .ToListAsync();
+
+        var alumnosEnCola = colas.Select(c => new AlumnoEnColaDto
+        {
+            IdCola = c.Id,
+            IdUsuario = c.UsuarioTajamarId,
+            Posicion = c.Posicion,
+            Nombre = c.Usuario.Nombre,
+            Apellidos = c.Usuario.Apellidos,
+            Foto = c.Usuario.Imagen,
+            FechaRegistro = c.FechaRegistro
+        }).ToList();
+
+        return new PasajerosTrayectoDto
+        {
+            TrayectoId = trayecto.Id,
+            Origen = trayecto.Origen,
+            Destino = trayecto.Destino,
+            FechaHoraSalida = trayecto.FechaHoraSalida,
+            PlazasTotales = trayecto.PlazasTotales,
+            PlazasDisponibles = trayecto.PlazasDisponibles,
+            Estado = trayecto.Estado,
+            PasajerosConfirmados = pasajerosConfirmados,
+            AlumnosEnCola = alumnosEnCola
+        };
+    }
 }

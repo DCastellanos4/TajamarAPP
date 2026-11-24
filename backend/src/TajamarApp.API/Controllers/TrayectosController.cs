@@ -176,9 +176,44 @@ public class TrayectosController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Consulta los pasajeros confirmados y los alumnos en lista de espera de un trayecto propio.
+    /// </summary>
+    [HttpGet("{id:int}/pasajeros")]
+    [Authorize]
+    [ProducesResponseType(typeof(PasajerosTrayectoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPasajerosTrayecto(int id)
+    {
+        var idUsuario = GetCurrentUserId();
+        if (idUsuario == null)
+        {
+            return Unauthorized(new { mensaje = "Token inválido." });
+        }
+
+        try
+        {
+            var resultado = await _trayectoService.GetPasajerosTrayectoAsync(idUsuario.Value, id);
+            if (resultado == null)
+            {
+                return NotFound(new { mensaje = $"Trayecto con ID {id} no encontrado." });
+            }
+
+            return Ok(resultado);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { mensaje = ex.Message });
+        }
+    }
+
     private int? GetCurrentUserId()
     {
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var claim = User.FindFirst("idUsuarioTajamar")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
         return int.TryParse(claim, out var id) ? id : null;
     }
 }
