@@ -1,0 +1,596 @@
+using Microsoft.EntityFrameworkCore;
+using TajamarApp.Core.DTOs.Common;
+using TajamarApp.Core.DTOs.Trayectos;
+using TajamarApp.Core.Entities;
+using TajamarApp.Core.Interfaces;
+using TajamarApp.Infrastructure.Data;
+
+namespace TajamarApp.Infrastructure.Services;
+
+public class TrayectoService : ITrayectoService
+{
+    private readonly TajamarAppContext _context;
+    private readonly INotificacionService? _notificacionService;
+    private readonly ICalculadoraGastosService? _calculadoraGastosService;
+
+    public TrayectoService(
+        TajamarAppContext context,
+        INotificacionService? notificacionService = null,
+        ICalculadoraGastosService? calculadoraGastosService = null)
+    {
+        _context = context;
+        _notificacionService = notificacionService;
+        _calculadoraGastosService = calculadoraGastosService;
+    }
+
+    private async Task<(decimal? Media, int Total)> ObtenerRatingConductorAsync(int conductorPerfilId)
+    {
+        var valoraciones = await _context.ValoracionesApp
+            .AsNoTracking()
+            .Where(v => v.ConductorPerfilId == conductorPerfilId)
+            .Select(v => v.Puntuacion)
+            .ToListAsync();
+
+        var total = valoraciones.Count;
+        decimal? media = total > 0 ? Math.Round((decimal)valoraciones.Average(), 1) : null;
+        return (media, total);
+    }
+
+    public async Task<TrayectoDetalleDto> CrearTrayectoAsync(int idUsuario, CrearTrayectoDto dto)
+    {
+        var perfil = await _context.PerfilesApp
+            .Include(p => p.UsuarioTajamar)
+            .FirstOrDefaultAsync(p => p.IdUsuarioTajamar == idUsuario);
+
+        if (perfil == null || !perfil.EsConductor)
+        {
+            throw new InvalidOperationException("Solo los usuarios con perfil de conductor activo pueden publicar trayectos.");
+        }
+
+        if (dto.PlazasTotales > perfil.PlazasCoche)
+        {
+            throw new ArgumentException($"No puedes ofrecer {dto.PlazasTotales} plazas. Tu vehículo ({perfil.MarcaCoche} {perfil.ModeloCoche}) tiene capacidad máxima de {perfil.PlazasCoche} plazas.");
+        }
+
+        string? eventoTitulo = null;
+        if (dto.EventoId.HasValue)
+        {
+            var evento = await _context.EventosApp.FindAsync(dto.EventoId.Value);
+            if (evento == null)
+            {
+                throw new ArgumentException($"El evento con ID {dto.EventoId.Value} no existe.");
+            }
+            eventoTitulo = evento.Titulo;
+        }
+
+        var trayecto = new Trayecto
+        {
+            ConductorPerfilId = perfil.Id,
+            EventoId = dto.EventoId,
+            Origen = dto.Origen.Trim(),
+            Destino = string.IsNullOrWhiteSpace(dto.Destino) ? "Tajamar" : dto.Destino.Trim(),
+            FechaHoraSalida = dto.FechaHoraSalida,
+            PlazasTotales = dto.PlazasTotales,
+            PlazasDisponibles = dto.PlazasTotales,
+            TipoTrayecto = dto.TipoTrayecto,
+            Modalidad = dto.Modalidad,
+            DiasSemana = dto.DiasSemana,
+            Turno = dto.Turno,
+            Estado = "Activo",
+            FechaCreacion = DateTime.UtcNow
+        };
+
+        await _context.Trayectos.AddAsync(trayecto);
+        await _context.SaveChangesAsync();
+
+        var (ratingMedia, totalResenas) = await ObtenerRatingConductorAsync(perfil.Id);
+        var estimacion = _calculadoraGastosService?.CalcularCoste(
+            trayecto.Origen, trayecto.Destino, 0, trayecto.FechaHoraSalida, perfil.Telefono);
+
+        return new TrayectoDetalleDto
+        {
+            Id = trayecto.Id,
+            Origen = trayecto.Origen,
+            Destino = trayecto.Destino,
+            FechaHoraSalida = trayecto.FechaHoraSalida,
+            PlazasTotales = trayecto.PlazasTotales,
+            PlazasDisponibles = trayecto.PlazasDisponibles,
+            TipoTrayecto = trayecto.TipoTrayecto,
+            Modalidad = trayecto.Modalidad,
+            DiasSemana = trayecto.DiasSemana,
+            Turno = trayecto.Turno,
+            Estado = trayecto.Estado,
+            EventoId = trayecto.EventoId,
+            EventoTitulo = eventoTitulo,
+            FechaCreacion = trayecto.FechaCreacion,
+            ConductorPuntuacionMedia = ratingMedia,
+            ConductorTotalResenas = totalResenas,
+            EstimacionCoste = estimacion,
+            Conductor = new ConductorResumenDto
+            {
+                IdPerfil = perfil.Id,
+                IdUsuario = perfil.UsuarioTajamar.IdUsuario,
+                Nombre = perfil.UsuarioTajamar.Nombre,
+                Apellidos = perfil.UsuarioTajamar.Apellidos,
+                Imagen = perfil.UsuarioTajamar.Imagen,
+                Telefono = perfil.Telefono,
+                MarcaCoche = perfil.MarcaCoche,
+                ModeloCoche = perfil.ModeloCoche,
+                ColorCoche = perfil.ColorCoche,
+                Matricula = perfil.Matricula,
+                Bio = perfil.Bio,
+                PuntuacionMedia = ratingMedia,
+                TotalResenas = totalResenas
+            }
+        };
+    }
+
+    public async Task<TrayectoDetalleDto?> GetTrayectoPorIdAsync(int idTrayecto)
+    {
+        var trayecto = await _context.Trayectos
+            .AsNoTracking()
+            .Include(t => t.Conductor)
+                .ThenInclude(c => c.UsuarioTajamar)
+            .Include(t => t.Evento)
+            .FirstOrDefaultAsync(t => t.Id == idTrayecto);
+
+        if (trayecto == null)
+        {
+            return null;
+        }
+
+        var (ratingMedia, totalResenas) = await ObtenerRatingConductorAsync(trayecto.ConductorPerfilId);
+        var plazasOcupadas = Math.Max(0, trayecto.PlazasTotales - trayecto.PlazasDisponibles);
+        var estimacion = _calculadoraGastosService?.CalcularCoste(
+            trayecto.Origen,
+            trayecto.Destino,
+            plazasOcupadas,
+            trayecto.FechaHoraSalida,
+            trayecto.Conductor.Telefono);
+
+        return new TrayectoDetalleDto
+        {
+            Id = trayecto.Id,
+            Origen = trayecto.Origen,
+            Destino = trayecto.Destino,
+            FechaHoraSalida = trayecto.FechaHoraSalida,
+            PlazasTotales = trayecto.PlazasTotales,
+            PlazasDisponibles = trayecto.PlazasDisponibles,
+            TipoTrayecto = trayecto.TipoTrayecto,
+            Modalidad = trayecto.Modalidad,
+            DiasSemana = trayecto.DiasSemana,
+            Turno = trayecto.Turno,
+            Estado = trayecto.Estado,
+            EventoId = trayecto.EventoId,
+            EventoTitulo = trayecto.Evento?.Titulo,
+            FechaCreacion = trayecto.FechaCreacion,
+            ConductorPuntuacionMedia = ratingMedia,
+            ConductorTotalResenas = totalResenas,
+            EstimacionCoste = estimacion,
+            Conductor = new ConductorResumenDto
+            {
+                IdPerfil = trayecto.Conductor.Id,
+                IdUsuario = trayecto.Conductor.UsuarioTajamar.IdUsuario,
+                Nombre = trayecto.Conductor.UsuarioTajamar.Nombre,
+                Apellidos = trayecto.Conductor.UsuarioTajamar.Apellidos,
+                Imagen = trayecto.Conductor.UsuarioTajamar.Imagen,
+                Telefono = trayecto.Conductor.Telefono,
+                MarcaCoche = trayecto.Conductor.MarcaCoche,
+                ModeloCoche = trayecto.Conductor.ModeloCoche,
+                ColorCoche = trayecto.Conductor.ColorCoche,
+                Matricula = trayecto.Conductor.Matricula,
+                Bio = trayecto.Conductor.Bio,
+                PuntuacionMedia = ratingMedia,
+                TotalResenas = totalResenas
+            }
+        };
+    }
+
+    public async Task<IEnumerable<TrayectoResumenDto>> GetMisTrayectosAsync(int idUsuario)
+    {
+        var perfil = await _context.PerfilesApp
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUsuarioTajamar == idUsuario);
+
+        if (perfil == null)
+        {
+            return Enumerable.Empty<TrayectoResumenDto>();
+        }
+
+        var trayectos = await _context.Trayectos
+            .AsNoTracking()
+            .Include(t => t.Conductor)
+                .ThenInclude(c => c.UsuarioTajamar)
+            .Where(t => t.ConductorPerfilId == perfil.Id)
+            .OrderByDescending(t => t.FechaHoraSalida)
+            .Select(t => new TrayectoResumenDto
+            {
+                Id = t.Id,
+                ConductorNombre = $"{t.Conductor.UsuarioTajamar.Nombre} {t.Conductor.UsuarioTajamar.Apellidos}".Trim(),
+                ConductorImagen = t.Conductor.UsuarioTajamar.Imagen,
+                Coche = $"{t.Conductor.MarcaCoche} {t.Conductor.ModeloCoche}".Trim(),
+                Origen = t.Origen,
+                Destino = t.Destino,
+                FechaHoraSalida = t.FechaHoraSalida,
+                PlazasDisponibles = t.PlazasDisponibles,
+                PlazasTotales = t.PlazasTotales,
+                TipoTrayecto = t.TipoTrayecto,
+                Modalidad = t.Modalidad,
+                Turno = t.Turno,
+                DiasSemana = t.DiasSemana,
+                Estado = t.Estado,
+                EventoId = t.EventoId
+            })
+            .ToListAsync();
+
+        var stats = await _context.ValoracionesApp
+            .AsNoTracking()
+            .Where(v => v.ConductorPerfilId == perfil.Id)
+            .GroupBy(v => v.ConductorPerfilId)
+            .Select(g => new
+            {
+                Count = g.Count(),
+                Media = Math.Round((decimal)g.Average(v => v.Puntuacion), 1)
+            })
+            .FirstOrDefaultAsync();
+
+        if (stats != null)
+        {
+            foreach (var t in trayectos)
+            {
+                t.ConductorTotalResenas = stats.Count;
+                t.ConductorPuntuacionMedia = stats.Media;
+            }
+        }
+
+        return trayectos;
+    }
+
+    public async Task<TrayectoDetalleDto?> EditarTrayectoAsync(int idUsuario, int idTrayecto, EditarTrayectoDto dto)
+    {
+        var perfil = await _context.PerfilesApp
+            .FirstOrDefaultAsync(p => p.IdUsuarioTajamar == idUsuario);
+
+        if (perfil == null)
+        {
+            throw new UnauthorizedAccessException("Perfil de conductor no encontrado.");
+        }
+
+        var trayecto = await _context.Trayectos
+            .Include(t => t.Conductor)
+                .ThenInclude(c => c.UsuarioTajamar)
+            .Include(t => t.Evento)
+            .FirstOrDefaultAsync(t => t.Id == idTrayecto);
+
+        if (trayecto == null)
+        {
+            return null;
+        }
+
+        if (trayecto.ConductorPerfilId != perfil.Id)
+        {
+            throw new UnauthorizedAccessException("No tienes permiso para modificar un trayecto que no es tuyo.");
+        }
+
+        if (dto.PlazasTotales > perfil.PlazasCoche)
+        {
+            throw new ArgumentException($"No puedes ofrecer {dto.PlazasTotales} plazas. La capacidad máxima de tu vehículo es {perfil.PlazasCoche}.");
+        }
+
+        var plazasReservadas = trayecto.PlazasTotales - trayecto.PlazasDisponibles;
+        if (dto.PlazasTotales < plazasReservadas)
+        {
+            throw new ArgumentException($"No puedes reducir las plazas a {dto.PlazasTotales} porque ya tienes {plazasReservadas} plaza(s) reservada(s).");
+        }
+
+        trayecto.Origen = dto.Origen.Trim();
+        trayecto.Destino = dto.Destino.Trim();
+        trayecto.FechaHoraSalida = dto.FechaHoraSalida;
+        trayecto.PlazasTotales = dto.PlazasTotales;
+        trayecto.PlazasDisponibles = dto.PlazasTotales - plazasReservadas;
+        trayecto.Modalidad = dto.Modalidad;
+        trayecto.DiasSemana = dto.DiasSemana;
+        trayecto.Turno = dto.Turno;
+
+        await _context.SaveChangesAsync();
+
+        var (ratingMedia, totalResenas) = await ObtenerRatingConductorAsync(perfil.Id);
+        var plazasOcupadas = Math.Max(0, trayecto.PlazasTotales - trayecto.PlazasDisponibles);
+        var estimacion = _calculadoraGastosService?.CalcularCoste(
+            trayecto.Origen,
+            trayecto.Destino,
+            plazasOcupadas,
+            trayecto.FechaHoraSalida,
+            perfil.Telefono);
+
+        return new TrayectoDetalleDto
+        {
+            Id = trayecto.Id,
+            Origen = trayecto.Origen,
+            Destino = trayecto.Destino,
+            FechaHoraSalida = trayecto.FechaHoraSalida,
+            PlazasTotales = trayecto.PlazasTotales,
+            PlazasDisponibles = trayecto.PlazasDisponibles,
+            TipoTrayecto = trayecto.TipoTrayecto,
+            Modalidad = trayecto.Modalidad,
+            DiasSemana = trayecto.DiasSemana,
+            Turno = trayecto.Turno,
+            Estado = trayecto.Estado,
+            EventoId = trayecto.EventoId,
+            EventoTitulo = trayecto.Evento?.Titulo,
+            FechaCreacion = trayecto.FechaCreacion,
+            ConductorPuntuacionMedia = ratingMedia,
+            ConductorTotalResenas = totalResenas,
+            EstimacionCoste = estimacion,
+            Conductor = new ConductorResumenDto
+            {
+                IdPerfil = perfil.Id,
+                IdUsuario = perfil.UsuarioTajamar.IdUsuario,
+                Nombre = perfil.UsuarioTajamar.Nombre,
+                Apellidos = perfil.UsuarioTajamar.Apellidos,
+                Imagen = perfil.UsuarioTajamar.Imagen,
+                Telefono = perfil.Telefono,
+                MarcaCoche = perfil.MarcaCoche,
+                ModeloCoche = perfil.ModeloCoche,
+                ColorCoche = perfil.ColorCoche,
+                Matricula = perfil.Matricula,
+                Bio = perfil.Bio,
+                PuntuacionMedia = ratingMedia,
+                TotalResenas = totalResenas
+            }
+        };
+    }
+
+    public async Task<bool> CancelarTrayectoAsync(int idUsuario, int idTrayecto)
+    {
+        var perfil = await _context.PerfilesApp
+            .FirstOrDefaultAsync(p => p.IdUsuarioTajamar == idUsuario);
+
+        if (perfil == null)
+        {
+            throw new UnauthorizedAccessException("Perfil de conductor no encontrado.");
+        }
+
+        var trayecto = await _context.Trayectos.FindAsync(idTrayecto);
+        if (trayecto == null)
+        {
+            return false;
+        }
+
+        if (trayecto.ConductorPerfilId != perfil.Id)
+        {
+            throw new UnauthorizedAccessException("No tienes permiso para cancelar un trayecto que no es tuyo.");
+        }
+
+        trayecto.Estado = "Cancelado";
+        await _context.SaveChangesAsync();
+
+        // Notificar a los pasajeros confirmados en tiempo real con SignalR
+        if (_notificacionService != null)
+        {
+            var pasajerosIds = await _context.ReservasTrayecto
+                .Where(r => r.TrayectoId == idTrayecto && r.Estado == "Confirmada")
+                .Select(r => r.PasajeroUsuarioId)
+                .ToListAsync();
+
+            if (pasajerosIds.Any())
+            {
+                await _notificacionService.NotificarTrayectoCanceladoAsync(
+                    pasajerosIds, idTrayecto, trayecto.Origen, trayecto.Destino);
+            }
+        }
+
+        return true;
+    }
+
+    public async Task<ResultadoPaginadoDto<TrayectoResumenDto>> BuscarTrayectosAsync(FiltroTrayectosDto filtro)
+    {
+        var query = _context.Trayectos
+            .AsNoTracking()
+            .Include(t => t.Conductor)
+                .ThenInclude(c => c.UsuarioTajamar)
+            .Where(t => t.Estado == "Activo");
+
+        // 1. Filtro por Origen (parcial)
+        if (!string.IsNullOrWhiteSpace(filtro.Origen))
+        {
+            var origenTerm = filtro.Origen.Trim();
+            query = query.Where(t => EF.Functions.Like(t.Origen, $"%{origenTerm}%"));
+        }
+
+        // 2. Filtro por Destino (parcial)
+        if (!string.IsNullOrWhiteSpace(filtro.Destino))
+        {
+            var destinoTerm = filtro.Destino.Trim();
+            query = query.Where(t => EF.Functions.Like(t.Destino, $"%{destinoTerm}%"));
+        }
+
+        // 3. Filtro por Tipo de Trayecto (Recurrente / Puntual)
+        if (!string.IsNullOrWhiteSpace(filtro.TipoTrayecto))
+        {
+            var tipoTerm = filtro.TipoTrayecto.Trim().ToLower();
+            query = query.Where(t => t.TipoTrayecto.ToLower() == tipoTerm);
+        }
+
+        // 4. Filtro por Modalidad (SoloIda / SoloVuelta / IdaYVuelta)
+        if (!string.IsNullOrWhiteSpace(filtro.Modalidad))
+        {
+            var modTerm = filtro.Modalidad.Trim().ToLower();
+            query = query.Where(t => t.Modalidad.ToLower() == modTerm);
+        }
+
+        // 5. Filtro por Turno (Manana / Tarde)
+        if (!string.IsNullOrWhiteSpace(filtro.Turno))
+        {
+            var turnoTerm = filtro.Turno.Trim().ToLower();
+            query = query.Where(t => t.Turno != null && t.Turno.ToLower() == turnoTerm);
+        }
+
+        // 6. Filtro por Evento específico
+        if (filtro.EventoId.HasValue)
+        {
+            query = query.Where(t => t.EventoId == filtro.EventoId.Value);
+        }
+
+        // 7. Filtro por Fecha de salida exacta (por día)
+        if (filtro.Fecha.HasValue)
+        {
+            var fechaFiltro = filtro.Fecha.Value.Date;
+            query = query.Where(t => t.FechaHoraSalida.Date == fechaFiltro);
+        }
+
+        // 8. Filtro solo con plazas libres
+        if (filtro.SoloConPlazas == true)
+        {
+            query = query.Where(t => t.PlazasDisponibles > 0);
+        }
+
+        // Contar el total de registros coincidentes
+        var total = await query.CountAsync();
+
+        // Paginación y ordenación por fecha de salida más próxima
+        var items = await query
+            .OrderBy(t => t.FechaHoraSalida)
+            .Skip((filtro.Pagina - 1) * filtro.TamanoPagina)
+            .Take(filtro.TamanoPagina)
+            .Select(t => new TrayectoResumenDto
+            {
+                Id = t.Id,
+                ConductorNombre = $"{t.Conductor.UsuarioTajamar.Nombre} {t.Conductor.UsuarioTajamar.Apellidos}".Trim(),
+                ConductorImagen = t.Conductor.UsuarioTajamar.Imagen,
+                Coche = $"{t.Conductor.MarcaCoche} {t.Conductor.ModeloCoche}".Trim(),
+                Origen = t.Origen,
+                Destino = t.Destino,
+                FechaHoraSalida = t.FechaHoraSalida,
+                PlazasDisponibles = t.PlazasDisponibles,
+                PlazasTotales = t.PlazasTotales,
+                TipoTrayecto = t.TipoTrayecto,
+                Modalidad = t.Modalidad,
+                Turno = t.Turno,
+                DiasSemana = t.DiasSemana,
+                Estado = t.Estado,
+                EventoId = t.EventoId
+            })
+            .ToListAsync();
+
+        if (items.Any())
+        {
+            var trayectoIds = items.Select(i => i.Id).ToList();
+            var conductorStats = await _context.Trayectos
+                .AsNoTracking()
+                .Where(t => trayectoIds.Contains(t.Id))
+                .Select(t => new { t.Id, t.ConductorPerfilId })
+                .ToListAsync();
+
+            var perfilIds = conductorStats.Select(s => s.ConductorPerfilId).Distinct().ToList();
+
+            var statsPorPerfil = await _context.ValoracionesApp
+                .AsNoTracking()
+                .Where(v => perfilIds.Contains(v.ConductorPerfilId))
+                .GroupBy(v => v.ConductorPerfilId)
+                .Select(g => new
+                {
+                    PerfilId = g.Key,
+                    Count = g.Count(),
+                    Media = Math.Round((decimal)g.Average(v => v.Puntuacion), 1)
+                })
+                .ToDictionaryAsync(g => g.PerfilId, g => (g.Count, (decimal?)g.Media));
+
+            var trayectoPerfilMap = conductorStats.ToDictionary(s => s.Id, s => s.ConductorPerfilId);
+
+            foreach (var item in items)
+            {
+                if (trayectoPerfilMap.TryGetValue(item.Id, out var perfilId) &&
+                    statsPorPerfil.TryGetValue(perfilId, out var stats))
+                {
+                    item.ConductorTotalResenas = stats.Count;
+                    item.ConductorPuntuacionMedia = stats.Item2;
+                }
+            }
+        }
+
+        return new ResultadoPaginadoDto<TrayectoResumenDto>(items, total, filtro.Pagina, filtro.TamanoPagina);
+    }
+
+    public async Task<PasajerosTrayectoDto?> GetPasajerosTrayectoAsync(int idUsuarioConductor, int idTrayecto)
+    {
+        var perfilConductor = await _context.PerfilesApp
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.IdUsuarioTajamar == idUsuarioConductor);
+
+        if (perfilConductor == null)
+        {
+            throw new UnauthorizedAccessException("Perfil de conductor no encontrado.");
+        }
+
+        var trayecto = await _context.Trayectos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == idTrayecto);
+
+        if (trayecto == null)
+        {
+            return null;
+        }
+
+        if (trayecto.ConductorPerfilId != perfilConductor.Id)
+        {
+            throw new UnauthorizedAccessException("No tienes permiso para ver los pasajeros de un trayecto que no es tuyo.");
+        }
+
+        // 1. Obtener pasajeros confirmados con sus datos de contacto y perfil
+        var reservas = await _context.ReservasTrayecto
+            .AsNoTracking()
+            .Include(r => r.Pasajero)
+                .ThenInclude(p => p.PerfilApp)
+            .Where(r => r.TrayectoId == idTrayecto && r.Estado == "Confirmada")
+            .OrderBy(r => r.FechaReserva)
+            .ToListAsync();
+
+        var pasajerosConfirmados = reservas.Select(r => new PasajeroResumenDto
+        {
+            IdReserva = r.Id,
+            IdUsuario = r.PasajeroUsuarioId,
+            Nombre = r.Pasajero.Nombre,
+            Apellidos = r.Pasajero.Apellidos,
+            Email = r.Pasajero.Email,
+            Foto = r.Pasajero.Imagen,
+            Telefono = r.Pasajero.PerfilApp?.Telefono,
+            Bio = r.Pasajero.PerfilApp?.Bio,
+            FechaReserva = r.FechaReserva,
+            Estado = r.Estado
+        }).ToList();
+
+        // 2. Obtener alumnos en cola de espera (FIFO)
+        var colas = await _context.ColasEspera
+            .AsNoTracking()
+            .Include(c => c.Usuario)
+            .Where(c => c.TrayectoId == idTrayecto && c.Estado == "EnEspera")
+            .OrderBy(c => c.Posicion)
+            .ThenBy(c => c.Id)
+            .ToListAsync();
+
+        var alumnosEnCola = colas.Select(c => new AlumnoEnColaDto
+        {
+            IdCola = c.Id,
+            IdUsuario = c.UsuarioTajamarId,
+            Posicion = c.Posicion,
+            Nombre = c.Usuario.Nombre,
+            Apellidos = c.Usuario.Apellidos,
+            Foto = c.Usuario.Imagen,
+            FechaRegistro = c.FechaRegistro
+        }).ToList();
+
+        return new PasajerosTrayectoDto
+        {
+            TrayectoId = trayecto.Id,
+            Origen = trayecto.Origen,
+            Destino = trayecto.Destino,
+            FechaHoraSalida = trayecto.FechaHoraSalida,
+            PlazasTotales = trayecto.PlazasTotales,
+            PlazasDisponibles = trayecto.PlazasDisponibles,
+            Estado = trayecto.Estado,
+            PasajerosConfirmados = pasajerosConfirmados,
+            AlumnosEnCola = alumnosEnCola
+        };
+    }
+}
