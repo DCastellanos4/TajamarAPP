@@ -3,25 +3,27 @@ using Microsoft.Data.SqlClient;
 using TajamarApp.API.Auth;
 using TajamarApp.API.Domain;
 using TajamarApp.API.Infrastructure;
+using TajamarApp.Core.Interfaces;
 
 namespace TajamarApp.API.Features.Reservations;
 
 public static class Reservations
 {
-    private sealed record Trip(int DriverId, int Available, string State, DateTime Start);
+    private sealed record Trip(int DriverId, int Available, string State, DateTime Start, string Origen, string Destino);
 
     public static void MapReservations(this RouteGroupBuilder api)
     {
-        api.MapPost("/trayectos/{id:int}/reservar", (int id, HttpContext http, Database db, TimeProvider clock,
-            CancellationToken ct) => Join(id, TeamJwt.UserId(http.User), false, db, clock, ct));
-        api.MapPost("/trayectos/{id:int}/cola", (int id, HttpContext http, Database db, TimeProvider clock,
-            CancellationToken ct) => Join(id, TeamJwt.UserId(http.User), true, db, clock, ct));
-        api.MapDelete("/reservas/{id:int}", (int id, HttpContext http, Database db, TimeProvider clock,
-            CancellationToken ct) => Cancel(id, TeamJwt.UserId(http.User), db, clock, ct));
+        var group = api.WithTags("Reservas");
+        group.MapPost("/trayectos/{id:int}/reservar", (int id, HttpContext http, Database db, TimeProvider clock,
+            INotificacionService notificaciones, CancellationToken ct) => Join(id, TeamJwt.UserId(http.User), false, db, clock, notificaciones, ct));
+        group.MapPost("/trayectos/{id:int}/cola", (int id, HttpContext http, Database db, TimeProvider clock,
+            INotificacionService notificaciones, CancellationToken ct) => Join(id, TeamJwt.UserId(http.User), true, db, clock, notificaciones, ct));
+        group.MapDelete("/reservas/{id:int}", (int id, HttpContext http, Database db, TimeProvider clock,
+            INotificacionService notificaciones, CancellationToken ct) => Cancel(id, TeamJwt.UserId(http.User), db, clock, notificaciones, ct));
     }
 
     private static Task<IResult> Join(int id, int userId, bool wait, Database db, TimeProvider clock,
-        CancellationToken ct) => db.Write<IResult>(async (connection, transaction) =>
+        INotificacionService notificaciones, CancellationToken ct) => db.Write<IResult>(async (connection, transaction) =>
     {
         var trip = await LockTrip(connection, transaction, id, ct);
         if (trip is null)
@@ -67,11 +69,20 @@ public static class Reservations
 
         await ChangeAvailability(connection, transaction, id, -1, ct);
         var reservationId = await InsertReservation(connection, transaction, id, userId, ct);
+
+        // Notificar en tiempo real al conductor del trayecto con SignalR
+        using var nameCmd = Database.Command(connection, transaction, """
+            SELECT CONCAT(NOMBRE, N' ', APELLIDOS) FROM dbo.USUARIOSTAJAMAR WHERE IDUSUARIO = @user;
+            """, ("@user", userId));
+        var passengerName = (string)(await nameCmd.ExecuteScalarAsync(ct) ?? "Un alumno");
+
+        _ = notificaciones.NotificarNuevaReservaAsync(trip.DriverId, id, passengerName, trip.Origen, trip.Destino);
+
         return Results.Json(new { id = reservationId, trayectoId = id, estado = "Confirmada" }, statusCode: 201);
     }, ct);
 
     private static Task<IResult> Cancel(int id, int userId, Database db, TimeProvider clock,
-        CancellationToken ct) => db.Write<IResult>(async (connection, transaction) =>
+        INotificacionService notificaciones, CancellationToken ct) => db.Write<IResult>(async (connection, transaction) =>
     {
         using var lookup = Database.Command(connection, transaction, """
             SELECT TrayectoId FROM dbo.RESERVAS_TRAYECTO WHERE Id = @id AND PasajeroUsuarioId = @user;
@@ -105,6 +116,10 @@ public static class Reservations
                 WHERE TrayectoId = @trip AND Estado = N'EnEspera' AND Posicion > @position;
             """, ("@id", candidate.Value.Id), ("@trip", tripId), ("@position", candidate.Value.Posicion));
         await promote.ExecuteNonQueryAsync(ct);
+
+        // Notificar en tiempo real al alumno promocionado de la cola con SignalR
+        _ = notificaciones.NotificarPromocionColaAsync(candidate.Value.UsuarioId, tripId, trip.Origen, trip.Destino);
+
         return Results.NoContent();
     }, ct);
 
@@ -112,14 +127,14 @@ public static class Reservations
         CancellationToken ct)
     {
         using var command = Database.Command(connection, transaction, """
-            SELECT p.IdUsuarioTajamar, t.PlazasDisponibles, t.Estado, t.FechaHoraSalida
+            SELECT p.IdUsuarioTajamar, t.PlazasDisponibles, t.Estado, t.FechaHoraSalida, t.Origen, t.Destino
             FROM dbo.TRAYECTOS t WITH (UPDLOCK, HOLDLOCK)
             JOIN dbo.PERFIL_APP p ON p.Id = t.ConductorPerfilId WHERE t.Id = @trip;
             """, ("@trip", id));
         await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow, ct);
         return await reader.ReadAsync(ct)
             ? new Trip(reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2),
-                reader.GetDateTime(3))
+                reader.GetDateTime(3), reader.GetString(4), reader.GetString(5))
             : null;
     }
 

@@ -1,11 +1,14 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using TajamarApp.API.Features.Events;
 using TajamarApp.API.Features.Reservations;
+using TajamarApp.API.Hubs;
 using TajamarApp.API.Infrastructure;
+using TajamarApp.API.Services;
 using TajamarApp.Core.Interfaces;
 using TajamarApp.Infrastructure.Data;
 using TajamarApp.Infrastructure.Services;
@@ -46,6 +49,14 @@ public static class TajamarApplication
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IPerfilService, PerfilService>();
         builder.Services.AddScoped<ITrayectoService, TrayectoService>();
+        builder.Services.AddScoped<IReservaService, ReservaService>();
+        builder.Services.AddScoped<INotificacionService, NotificacionService>();
+        builder.Services.AddScoped<IValoracionService, ValoracionService>();
+        builder.Services.AddScoped<ICalculadoraGastosService, CalculadoraGastosService>();
+
+        // 3.1. SignalR y Mapeo de Usuario
+        builder.Services.AddSignalR();
+        builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
         // 4. Autenticación JWT Bearer
         var jwtSecret = builder.Configuration["JwtSettings:Secret"] 
@@ -76,6 +87,21 @@ public static class TajamarApplication
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
                 ClockSkew = TimeSpan.Zero
             };
+
+            // Soporte para autenticación JWT en WebSockets de SignalR
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         });
 
         // 5. Políticas de Autorización
@@ -85,8 +111,12 @@ public static class TajamarApplication
                 policy.RequireRole("GestorEventos", "Administrador"));
         });
 
-        // 6. Controladores
+        // 6. Controladores y Enrutamiento (URLs en minúsculas estándar para frontend)
         builder.Services.AddControllers();
+        builder.Services.Configure<RouteOptions>(options =>
+        {
+            options.LowercaseUrls = true;
+        });
 
         // 7. CORS para Angular
         builder.Services.AddCors(options =>
@@ -139,10 +169,11 @@ public static class TajamarApplication
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // Mapeo de Controladores y Minimal API Route Groups
+        // Mapeo de Controladores, Minimal API y SignalR Hubs
         app.MapControllers();
         app.MapGroup("/api").MapEvents();
         app.MapGroup("/api").RequireAuthorization().MapReservations();
+        app.MapHub<NotificacionesHub>("/hubs/notificaciones");
 
         return app;
     }

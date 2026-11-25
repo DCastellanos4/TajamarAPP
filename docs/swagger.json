@@ -5,7 +5,7 @@
     "version": "1.0"
   },
   "paths": {
-    "/api/Auth/login": {
+    "/api/auth/login": {
       "post": {
         "tags": [
           "Auth"
@@ -73,7 +73,7 @@
         }
       }
     },
-    "/api/Cursos": {
+    "/api/cursos": {
       "get": {
         "tags": [
           "Cursos"
@@ -111,7 +111,7 @@
         }
       }
     },
-    "/api/Cursos/{id}": {
+    "/api/cursos/{id}": {
       "get": {
         "tags": [
           "Cursos"
@@ -154,7 +154,7 @@
     "/api/eventos": {
       "get": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "responses": {
           "200": {
@@ -164,7 +164,7 @@
       },
       "post": {
         "tags": [
-          "TajamarApp.API"
+          "Eventos"
         ],
         "requestBody": {
           "content": {
@@ -186,7 +186,7 @@
     "/api/eventos/{id}": {
       "get": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "operationId": "DetalleEvento",
         "parameters": [
@@ -208,7 +208,7 @@
       },
       "put": {
         "tags": [
-          "TajamarApp.API"
+          "Eventos"
         ],
         "parameters": [
           {
@@ -241,7 +241,7 @@
     "/api/eventos/{id}/asistir": {
       "post": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "parameters": [
           {
@@ -262,7 +262,7 @@
       },
       "delete": {
         "tags": [
-          "Events"
+          "Eventos"
         ],
         "parameters": [
           {
@@ -282,7 +282,7 @@
         }
       }
     },
-    "/api/Health": {
+    "/api/health": {
       "get": {
         "tags": [
           "Health"
@@ -294,7 +294,7 @@
         }
       }
     },
-    "/api/Perfil/me": {
+    "/api/perfil/me": {
       "get": {
         "tags": [
           "Perfil"
@@ -363,7 +363,7 @@
         }
       }
     },
-    "/api/Perfil": {
+    "/api/perfil": {
       "post": {
         "tags": [
           "Perfil"
@@ -454,7 +454,7 @@
     "/api/trayectos/{id}/reservar": {
       "post": {
         "tags": [
-          "TajamarApp.API"
+          "Reservas"
         ],
         "parameters": [
           {
@@ -477,7 +477,7 @@
     "/api/trayectos/{id}/cola": {
       "post": {
         "tags": [
-          "TajamarApp.API"
+          "Reservas"
         ],
         "parameters": [
           {
@@ -500,7 +500,7 @@
     "/api/reservas/{id}": {
       "delete": {
         "tags": [
-          "TajamarApp.API"
+          "Reservas"
         ],
         "parameters": [
           {
@@ -520,7 +520,182 @@
         }
       }
     },
-    "/api/Trayectos": {
+    "/api/reservas/mis-reservas": {
+      "get": {
+        "tags": [
+          "Reservas"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MiReservaDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MiReservaDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MiReservaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reservas/cola/{idCola}": {
+      "delete": {
+        "tags": [
+          "Reservas"
+        ],
+        "parameters": [
+          {
+            "name": "idCola",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trayectos/calcular-coste": {
+      "get": {
+        "tags": [
+          "Trayectos"
+        ],
+        "parameters": [
+          {
+            "name": "origen",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "destino",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "plazas",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimacionCosteDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimacionCosteDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimacionCosteDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trayectos": {
       "get": {
         "tags": [
           "Trayectos"
@@ -715,7 +890,7 @@
         }
       }
     },
-    "/api/Trayectos/{id}": {
+    "/api/trayectos/{id}": {
       "get": {
         "tags": [
           "Trayectos"
@@ -973,7 +1148,7 @@
         }
       }
     },
-    "/api/Trayectos/mis-viajes": {
+    "/api/trayectos/mis-viajes": {
       "get": {
         "tags": [
           "Trayectos"
@@ -1031,7 +1206,107 @@
         }
       }
     },
-    "/api/Usuarios": {
+    "/api/trayectos/{id}/pasajeros": {
+      "get": {
+        "tags": [
+          "Trayectos"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasajerosTrayectoDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasajerosTrayectoDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasajerosTrayectoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/usuarios": {
       "get": {
         "tags": [
           "Usuarios"
@@ -1043,7 +1318,7 @@
         }
       }
     },
-    "/api/Usuarios/{id}": {
+    "/api/usuarios/{id}": {
       "get": {
         "tags": [
           "Usuarios"
@@ -1066,7 +1341,7 @@
         }
       }
     },
-    "/api/Usuarios/curso/{idCurso}": {
+    "/api/usuarios/curso/{idCurso}": {
       "get": {
         "tags": [
           "Usuarios"
@@ -1088,10 +1363,212 @@
           }
         }
       }
+    },
+    "/api/valoraciones": {
+      "post": {
+        "tags": [
+          "Valoraciones"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearValoracionDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearValoracionDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearValoracionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResenaDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResenaDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResenaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conductores/{id}/resenas": {
+      "get": {
+        "tags": [
+          "Valoraciones"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenResenasConductorDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenResenasConductorDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenResenasConductorDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AlumnoEnColaDto": {
+        "type": "object",
+        "properties": {
+          "idCola": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "idUsuario": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "posicion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "apellidos": {
+            "type": "string",
+            "nullable": true
+          },
+          "foto": {
+            "type": "string",
+            "nullable": true
+          },
+          "fechaRegistro": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "ColaEspera": {
         "type": "object",
         "properties": {
@@ -1174,6 +1651,15 @@
           "bio": {
             "type": "string",
             "nullable": true
+          },
+          "puntuacionMedia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "totalResenas": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -1226,6 +1712,35 @@
           "eventoId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CrearValoracionDto": {
+        "required": [
+          "trayectoId"
+        ],
+        "type": "object",
+        "properties": {
+          "trayectoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "puntuacion": {
+            "maximum": 5,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "comentario": {
+            "maxLength": 500,
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "maxLength": 250,
+            "type": "string",
             "nullable": true
           }
         },
@@ -1331,6 +1846,44 @@
           "turno": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "EstimacionCosteDto": {
+        "type": "object",
+        "properties": {
+          "distanciaKm": {
+            "type": "number",
+            "format": "double"
+          },
+          "costeTotalTrayecto": {
+            "type": "number",
+            "format": "double"
+          },
+          "plazasOcupadas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "costePorPlaza": {
+            "type": "number",
+            "format": "double"
+          },
+          "conceptoBizum": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefonoBizum": {
+            "type": "string",
+            "nullable": true
+          },
+          "ahorroEstimadoVsTaxi": {
+            "type": "number",
+            "format": "double"
+          },
+          "co2AhorradoKg": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -1480,6 +2033,223 @@
         },
         "additionalProperties": false
       },
+      "MiReservaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tipoEntrada": {
+            "type": "string",
+            "nullable": true
+          },
+          "idReserva": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "idCola": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "posicionCola": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "fechaRegistro": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trayectoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "origen": {
+            "type": "string",
+            "nullable": true
+          },
+          "destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "fechaHoraSalida": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tipoTrayecto": {
+            "type": "string",
+            "nullable": true
+          },
+          "modalidad": {
+            "type": "string",
+            "nullable": true
+          },
+          "turno": {
+            "type": "string",
+            "nullable": true
+          },
+          "diasSemana": {
+            "type": "string",
+            "nullable": true
+          },
+          "plazasTotales": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "plazasDisponibles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estadoTrayecto": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "eventoTitulo": {
+            "type": "string",
+            "nullable": true
+          },
+          "conductorIdUsuario": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorNombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "conductorFoto": {
+            "type": "string",
+            "nullable": true
+          },
+          "conductorTelefono": {
+            "type": "string",
+            "nullable": true
+          },
+          "coche": {
+            "type": "string",
+            "nullable": true
+          },
+          "colorCoche": {
+            "type": "string",
+            "nullable": true
+          },
+          "matricula": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PasajeroResumenDto": {
+        "type": "object",
+        "properties": {
+          "idReserva": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "idUsuario": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "apellidos": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "foto": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefono": {
+            "type": "string",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "fechaReserva": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PasajerosTrayectoDto": {
+        "type": "object",
+        "properties": {
+          "trayectoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "origen": {
+            "type": "string",
+            "nullable": true
+          },
+          "destino": {
+            "type": "string",
+            "nullable": true
+          },
+          "fechaHoraSalida": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plazasTotales": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "plazasDisponibles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "plazasOcupadas": {
+            "type": "integer",
+            "format": "int32",
+            "readOnly": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "pasajerosConfirmados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PasajeroResumenDto"
+            },
+            "nullable": true
+          },
+          "alumnosEnCola": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlumnoEnColaDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PerfilApp": {
         "type": "object",
         "properties": {
@@ -1622,6 +2392,60 @@
         },
         "additionalProperties": { }
       },
+      "ResenaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trayectoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorPerfilId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pasajeroUsuarioId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pasajeroNombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "pasajeroFoto": {
+            "type": "string",
+            "nullable": true
+          },
+          "puntuacion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comentario": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "string",
+            "nullable": true
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "origenTrayecto": {
+            "type": "string",
+            "nullable": true
+          },
+          "destinoTrayecto": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ReservaTrayecto": {
         "type": "object",
         "properties": {
@@ -1650,6 +2474,51 @@
           },
           "pasajero": {
             "$ref": "#/components/schemas/UsuarioTajamar"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResumenResenasConductorDto": {
+        "type": "object",
+        "properties": {
+          "conductorIdUsuario": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorPerfilId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conductorNombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "conductorFoto": {
+            "type": "string",
+            "nullable": true
+          },
+          "puntuacionMedia": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalResenas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "desgloseEstrellas": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "resenas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResenaDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -1820,6 +2689,18 @@
           "fechaCreacion": {
             "type": "string",
             "format": "date-time"
+          },
+          "conductorPuntuacionMedia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "conductorTotalResenas": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "estimacionCoste": {
+            "$ref": "#/components/schemas/EstimacionCosteDto"
           }
         },
         "additionalProperties": false
@@ -1887,6 +2768,15 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "conductorPuntuacionMedia": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "conductorTotalResenas": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -2048,10 +2938,7 @@
       "name": "Cursos"
     },
     {
-      "name": "Events"
-    },
-    {
-      "name": "TajamarApp.API"
+      "name": "Eventos"
     },
     {
       "name": "Health"
@@ -2060,10 +2947,16 @@
       "name": "Perfil"
     },
     {
+      "name": "Reservas"
+    },
+    {
       "name": "Trayectos"
     },
     {
       "name": "Usuarios"
+    },
+    {
+      "name": "Valoraciones"
     }
   ]
 }

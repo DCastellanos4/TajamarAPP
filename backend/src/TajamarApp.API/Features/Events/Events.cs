@@ -13,7 +13,7 @@ public static class Events
 
     public static void MapEvents(this RouteGroupBuilder api)
     {
-        var routes = api.MapGroup("/eventos");
+        var routes = api.MapGroup("/eventos").WithTags("Eventos");
         routes.MapGet("", List);
         routes.MapGet("/{id:int}", Detail).WithName("DetalleEvento");
         routes.MapPost("", (EventInput input, HttpContext http, Database db, TimeProvider clock, CancellationToken ct) =>

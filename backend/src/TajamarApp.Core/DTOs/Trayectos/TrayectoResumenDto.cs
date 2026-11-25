@@ -17,4 +17,6 @@ public class TrayectoResumenDto
     public string? DiasSemana { get; set; }
     public string Estado { get; set; } = "Activo";
     public int? EventoId { get; set; }
+    public decimal? ConductorPuntuacionMedia { get; set; }
+    public int ConductorTotalResenas { get; set; }
 }

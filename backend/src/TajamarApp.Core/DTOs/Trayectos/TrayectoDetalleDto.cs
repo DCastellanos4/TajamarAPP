@@ -17,4 +17,7 @@ public class TrayectoDetalleDto
     public int? EventoId { get; set; }
     public string? EventoTitulo { get; set; }
     public DateTime FechaCreacion { get; set; }
+    public decimal? ConductorPuntuacionMedia { get; set; }
+    public int ConductorTotalResenas { get; set; }
+    public EstimacionCosteDto? EstimacionCoste { get; set; }
 }

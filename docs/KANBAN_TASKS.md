@@ -193,40 +193,40 @@ Este documento contiene la definición completa de las tareas iniciales repartid
 #### [BE-D06] Mis Reservas del Pasajero y Gestión de Cancelación (#30)
 - **Descripción:** Implementar el endpoint `GET /api/reservas/mis-reservas` para que el alumno consulte en qué trayectos tiene plaza o está en cola de espera.
 - **Criterios de Aceptación:**
-  - [ ] Endpoint `GET /api/reservas/mis-reservas` protegido con JWT.
-  - [ ] Retorna lista unificada de reservas del usuario con datos del trayecto (origen, destino, horario) y conductor.
-  - [ ] Indica estado (`Confirmada`, `Cancelada`, `EnEspera`) y posición en cola FIFO (`posicionCola`).
-  - [ ] El pasajero puede cancelar su reserva (`DELETE /api/reservas/{id}`) liberando plaza o promocionando FIFO.
+  - [x] Endpoint `GET /api/reservas/mis-reservas` protegido con JWT.
+  - [x] Retorna lista unificada de reservas del usuario con datos del trayecto (origen, destino, horario) y conductor.
+  - [x] Indica estado (`Confirmada`, `Cancelada`, `EnEspera`) y posición en cola FIFO (`posicionCola`).
+  - [x] El pasajero puede cancelar su reserva (`DELETE /api/reservas/{id}`) liberando plaza o promocionando FIFO.
 
 #### [BE-D07] Consulta de Pasajeros de Trayecto para el Conductor (#31)
 - **Descripción:** Endpoint `GET /api/trayectos/{id}/pasajeros` para que el conductor consulte la lista de alumnos confirmados en su coche.
 - **Criterios de Aceptación:**
-  - [ ] Endpoint `GET /api/trayectos/{id}/pasajeros` protegido con JWT.
-  - [ ] Validación: solo el conductor propietario puede consultarla (`403 Forbidden` a otros).
-  - [ ] Devuelve array de pasajeros confirmados con contacto (nombre, email, teléfono, foto, bio) y lista de espera.
+  - [x] Endpoint `GET /api/trayectos/{id}/pasajeros` protegido con JWT.
+  - [x] Validación: solo el conductor propietario puede consultarla (`403 Forbidden` a otros).
+  - [x] Devuelve array de pasajeros confirmados con contacto (nombre, email, teléfono, foto, bio) y lista de espera.
 
 #### [BE-D08] Hub de Notificaciones en Tiempo Real con SignalR (.NET 10) (#34)
 - **Descripción:** Hub de WebSockets `/hubs/notificaciones` autenticado con JWT para emitir eventos instantáneos a usuarios conectados.
 - **Criterios de Aceptación:**
-  - [ ] Hub de SignalR registrado con autenticación Bearer token y mapeo por `IdUsuario`.
-  - [ ] Evento `NuevaReserva`: Se envía al conductor cuando un alumno reserva plaza.
-  - [ ] Evento `PromocionCola`: Se notifica al alumno que pasa de lista de espera a reserva confirmada.
-  - [ ] Evento `TrayectoCancelado`: Alerta a los pasajeros confirmados si el viaje se suspende.
+  - [x] Hub de SignalR registrado con autenticación Bearer token y mapeo por `IdUsuario`.
+  - [x] Evento `NuevaReserva`: Se envía al conductor cuando un alumno reserva plaza.
+  - [x] Evento `PromocionCola`: Se notifica al alumno que pasa de lista de espera a reserva confirmada.
+  - [x] Evento `TrayectoCancelado`: Alerta a los pasajeros confirmados si el viaje se suspende.
 
 #### [BE-D09] Módulo de Valoraciones, Puntuación Media y Comentarios (1 a 5 ⭐) (#35)
 - **Descripción:** Endpoints y entidad para calificar conductores tras un viaje completado con estrellas y tags.
 - **Criterios de Aceptación:**
-  - [ ] Entidad `VALORACIONES_APP` vinculada a trayecto, conductor y pasajero.
-  - [ ] `POST /api/valoraciones`: Permite calificar de 1 a 5 estrellas, dejar comentario y elegir tags (*"Puntual"*, *"Buena conducción"*).
-  - [ ] `GET /api/conductores/{id}/resenas`: Devuelve la media de estrellas, total de opiniones y comentarios recibidos.
-  - [ ] Las tarjetas de trayectos incluyen el promedio de estrellas del conductor (`ej. ⭐ 4.9`).
+  - [x] Entidad `VALORACIONES_APP` vinculada a trayecto, conductor y pasajero.
+  - [x] `POST /api/valoraciones`: Permite calificar de 1 a 5 estrellas, dejar comentario y elegir tags (*"Puntual"*, *"Buena conducción"*).
+  - [x] `GET /api/conductores/{id}/resenas`: Devuelve la media de estrellas, total de opiniones y comentarios recibidos.
+  - [x] Las tarjetas de trayectos incluyen el promedio de estrellas del conductor (`ej. ⭐ 4.9`).
 
 #### [BE-D10] Calculadora Automática de Coste de Combustible y Ahorro (#36)
 - **Descripción:** Cálculo del gasto aproximado de carburante y desglose individual por plaza ocupada.
 - **Criterios de Aceptación:**
-  - [ ] En `GET /api/trayectos/{id}` se calcula el coste aproximado en base a distancia y plazas ocupadas (ej: 1,20 € por persona).
-  - [ ] Generación del concepto sugerido para Bizum: `"TajamarApp [Origen] - [Fecha]"`.
-  - [ ] Cálculo del ahorro colectivo acumulado frente al uso de transporte individual o taxi.
+  - [x] En `GET /api/trayectos/{id}` se calcula el coste aproximado en base a distancia y plazas ocupadas (ej: 1,20 € por persona).
+  - [x] Generación del concepto sugerido para Bizum: `"TajamarApp [Origen] - [Fecha]"`.
+  - [x] Cálculo del ahorro colectivo acumulado frente al uso de transporte individual o taxi.
 
 ---
 
